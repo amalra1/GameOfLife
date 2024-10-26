@@ -1,2 +1,1 @@
-# GameOfLife
-A Game of Life implementation
+# Game Of Life
