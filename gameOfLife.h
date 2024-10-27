@@ -9,7 +9,7 @@
 
 #define ALIVE 1
 #define DEAD 0
-#define GENERATIONS 5
+#define GENERATIONS_MAX 5
 
 typedef struct cell
 {

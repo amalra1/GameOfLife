@@ -3,6 +3,7 @@
 
 int main()
 {
+    int generations = GENERATIONS_MAX;
     int lines, columns;
 
     scanf("%d", &lines);
@@ -21,9 +22,15 @@ int main()
     
     setInitialState(&t, initialState);
 
-    printTable(&t);
+    //printTable(&t);
 
     // Starts Life
+    for (int i = 0; i < generations; i++)
+    {
+        printf("GENERATION: %d\n\n", i + 1);
+        printTable(&t);    
+        moveToNextState(&t);
+    }
     
 
     // Frees
