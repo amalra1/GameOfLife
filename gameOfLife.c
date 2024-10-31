@@ -156,11 +156,97 @@ int normality(table_t* t, int line, int column)
 }
 
 // Checks if a dead cell can reproduce and become alive again, returns 1 if so and 0 otherwise
-// int reproduction(table_t* t, int line, int column)
-// {
+int reproduction(table_t* t, int line, int column)
+{
+    int neighbours = 0;
+    int border1 = 0, border2 = 0;
 
+    // Upper line
+    
+    // If it isn't on the first line
+    if (line != 0)
+    {
+        // If it is on the first column
+        if (column == 0)
+        {
+            border1 = column;
+            border2 = column + 1;
+        }
 
-// }
+        // If it is on the last column
+        else if (column == t->columns - 1)
+        {
+            border1 = column - 1;
+            border2 = column;
+        }
+
+        // If it is on the columns among the first and last
+        else
+        {
+            border1 = column - 1;
+            border2 = column + 1;
+        }
+
+        for (int i = border1; i <= border2; i++)
+            if (t->table[line - 1][i].status == ALIVE)
+                neighbours++;
+    }
+
+    // Lower line
+    // If it isn't on the last line
+    if (line != t->lines - 1)
+    {
+        // If it is on the first column
+        if (column == 0)
+        {
+            border1 = column;
+            border2 = column + 1;
+        }
+
+        // If it is on the last column
+        else if (column == t->columns - 1)
+        {
+            border1 = column - 1;
+            border2 = column;
+        }
+
+        // If it is on the columns among the first and last
+        else
+        {
+            border1 = column - 1;
+            border2 = column + 1;
+        }
+
+        for (int i = border1; i <= border2; i++)
+            if (t->table[line + 1][i].status == ALIVE)
+                neighbours++;
+    }
+
+    if (neighbours > 3)
+        return 0;
+
+    // Left Side check
+    // If it isn't on the first collumn
+    if (column != 0)
+        if (t->table[line][column - 1].status == ALIVE)
+            neighbours++;
+
+    if (neighbours > 3)
+        return 0;
+
+    // Right Side check
+    // If it isn't on the last collumn
+    if (column != t->columns - 1)
+        if (t->table[line][column + 1].status == ALIVE)
+            neighbours++;
+
+    //printf("neighbours = %d\n", neighbours);
+
+    if (neighbours != 3)
+        return 0;
+    else
+        return 1;
+}
 
 void moveToNextState(table_t* t)
 {
@@ -184,9 +270,9 @@ void moveToNextState(table_t* t)
             // DEAD CELL
             else
             {
-                // // Check Reproduction
-                // if (reproduction(&t, i, j))
-                //     auxTable.table[i][j].status = ALIVE;
+                // Check Reproduction
+                if (reproduction(t, i, j))
+                    auxTable.table[i][j].status = ALIVE;
             }
         }
     }
