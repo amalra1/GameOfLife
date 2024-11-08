@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -g
 TARGET = main
-SRCS = main.c revGameOfLife.c
+SRCS = main.c reverseLife.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)
