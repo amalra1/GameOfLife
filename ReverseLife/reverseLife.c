@@ -288,6 +288,249 @@ void moveToNextState(table_t* t)
     destroyTable(&auxTable);
 }
 
+void writeCNFToFile(const char* filename, const char* cnf) 
+{
+    FILE* file = fopen("cnf.in", "w");
+    if (!file) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Write CNF header
+    // Assuming a maximum of 8 variables and clauses for illustration; adjust as needed
+    int numVariables = 8;  
+    int numClauses = 256;  
+    fprintf(file, "p cnf %d %d\n", numVariables, numClauses);
+
+    // Write CNF constraints
+    fprintf(file, "%s", cnf);
+
+    fclose(file);
+}
+
+#include <stdio.h>
+#include <stdbool.h>
+
+// Function to check if a combination has at least one alive element
+int hasAtLeastOneAlive(int combination[], int size) {
+    for (int i = 0; i < size; ++i) {
+        if (combination[i] > 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void generateCombinationsOf6(int combinations[1764][6]) 
+{
+    int arr[8] = {2, 3, 4, 5, 6, 7, 8, 9};
+    int index = 0;
+
+    for (int i = 0; i < 8; ++i)
+    {
+        for (int j = i + 1; j < 8; ++j)
+        { 
+            for (int k = j + 1; k < 8; ++k) 
+            {
+                for (int l = k + 1; l < 8; ++l)
+                { 
+                    for (int m = l + 1; m < 8; ++m)
+                    { 
+                        for (int n = m + 1; n < 8; ++n)
+                        {
+                            for (int v = 0; v < 64; ++v) 
+                            { 
+                                int combination[6] = {
+                                    (v & 1) ? -arr[i] : arr[i],
+                                    (v & 2) ? -arr[j] : arr[j],
+                                    (v & 4) ? -arr[k] : arr[k],
+                                    (v & 8) ? -arr[l] : arr[l],
+                                    (v & 16) ? -arr[m] : arr[m],
+                                    (v & 32) ? -arr[n] : arr[n],
+                                };
+
+                                if (hasAtLeastOneAlive(combination, 6)) {
+                                    for (int idx = 0; idx < 6; ++idx) {
+                                        combinations[index][idx] = combination[idx];
+                                    }
+                                    index++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } 
+}
+
+void generateCombinationsOf2(int combinations[84][2]) 
+{
+    int index = 0;
+
+    // Loop through all pairs of neighbors
+    for (int i = 0; i < 8; ++i) 
+    {
+        for (int j = i + 1; j < 8; ++j) 
+        {           
+            // Combination where the first neighbor is dead
+            combinations[index][0] = -(i + 2);
+            combinations[index][1] = j + 2;
+            index++;
+            
+            // Combination where the second neighbor is dead
+            combinations[index][0] = i + 2;
+            combinations[index][1] = -(j + 2);
+            index++;
+            
+            // Combination where both neighbors are dead
+            combinations[index][0] = -(i + 2);
+            combinations[index][1] = -(j + 2);
+            index++;
+
+            //printf("%d %d\n", i + 1, j + 1);
+        }
+    }
+}
+
+// Generates the CNF file based on the rules of an alive cell in the present
+// Rules: Life | Preservation
+void generateDeadCNF(char* cnf, int line, int col)
+{
+    // Buffer to store the clause 
+    char clause[64];
+    int combinationsOf2[84][2];
+    int combinationsOf6[1764][6];
+    
+    // 1. It was alive and remained alive
+
+    // Considering 
+    // X: The cell itself
+    // C: All of the size 2 combinations of neighours;
+    // N: All neighbours
+        // (!x OR (OR(!c)) OR (OR(N - c)))
+
+    // (THE LIVING CELL) OR -- No need, verification done in buildCNF function
+    // (COMBINATION OF 2 WHERE AT LEAST ONE IS DEAD) OR
+    // (COMBINATION OF 6 WHERE AT LEAST ONE IS ALIVE)
+    // ([1] (1 0) (1 0 0 0 0 0))
+    // AND WITH ALL OF THEM 
+
+    // Generate combinations of 2 where at least one is dead 
+    // (28(Combinations) * 3(variations))
+    // 84
+    generateCombinationsOf2(combinationsOf2);
+
+    // for (int i = 0; i < 84; i++)
+    // {
+    //     for (int j = 0; j < 2; j++)
+    //     {
+    //         printf("%d ", combinationsOf2[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+    
+    // Generate combinations of 6 where at least one is alive
+    // (28(Combinations) * 63(variations))
+    // 1764 (?)
+    generateCombinationsOf6(combinationsOf6);
+
+    // for (int i = 0; i < 1764; i++)
+    // {
+    //     for (int j = 0; j < 6; j++)
+    //     {
+    //         printf("%d ", combinationsOf6[i][j]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // Generate CNF clauses for each combination of 2
+    for (int i = 0; i < 84; ++i) 
+    {
+        memset(clause, 0, sizeof(clause));
+        strcat(clause, "1 ");
+
+        for (int j = 0; j < 2; ++j) 
+        {
+            if (combinationsOf2[i][j] < 0) 
+            {
+                strcat(clause, "-");
+                char idx[4];
+                snprintf(idx, sizeof(idx), "%d", -combinationsOf2[i][j]);
+                strcat(clause, idx);
+            } 
+            else
+            {
+                char idx[4];
+                snprintf(idx, sizeof(idx), "%d", combinationsOf2[i][j]);
+                strcat(clause, idx);
+            }
+            strcat(clause, " ");
+        }
+        strcat(clause, "0\n");
+        strcat(cnf, clause);
+    }
+
+    // Generate CNF clauses for each combination of 6
+    for (int i = 0; i < 1764; ++i) 
+    {
+        memset(clause, 0, sizeof(clause));
+        strcat(clause, "1 ");
+
+        for (int j = 0; j < 6; ++j) 
+        {
+            if (combinationsOf6[i][j] < 0) 
+            {
+                strcat(clause, "-");
+                char idx[4];
+                snprintf(idx, sizeof(idx), "%d", -combinationsOf6[i][j]);
+                strcat(clause, idx);
+            } 
+            else 
+            {
+                char idx[4];
+                snprintf(idx, sizeof(idx), "%d", combinationsOf6[i][j]);
+                strcat(clause, idx);
+            }
+            strcat(clause, " ");
+        }
+        strcat(clause, "0\n");
+        strcat(cnf, clause);
+    }
+    
+    // 2. It was dead and a new cell was born in place 
+}
+
+void buildCNF(table_t* t, int line, int col)
+{
+    // Constraints buffer
+    char cnf[81920] = "";
+
+    // 1. Check if the selected cell is alive or dead
+    if (t->table[line][col].status == ALIVE)
+    {
+
+        // If it is alive, it means:
+            // It was alive in the past and remained alive
+            // It was dead and a new cell was born in place
+    }
+    else
+    {
+
+        // If it is dead:
+            // It was dead and remained dead;
+            // It was alive and died of overpopulation;
+            // It was alive and died of loneliness;
+
+        // Generate the CNF file with constraints
+        generateDeadCNF(cnf, line, col);
+    }
+
+    // Write the constraints into the cnf file
+    writeCNFToFile("cnf.in", cnf);
+}
+
 void destroyTable(table_t* t) 
 {
     for (int i = 0; i < t->lines; i++)

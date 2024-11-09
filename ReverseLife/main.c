@@ -22,7 +22,8 @@ int main()
 
     setInitialState(&t, presentState);
 
-    // MAIN LOGIC GOES HERE
+    // Testing for the middle cell
+    buildCNF(&t, lines/2, columns/2);;
 
     //printTable(&t);
 

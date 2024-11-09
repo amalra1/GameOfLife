@@ -2,6 +2,7 @@
 #define REVERSE_LIFE
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 /*
     MADE BY
     PEDRO AMARAL CHAPELIN
@@ -33,6 +34,12 @@ void moveToNextState(table_t* t);
 
 // Prints table
 void printTable(table_t* t);
+
+// Writes the cnf obtainerd on a file
+void writeCNFToFile(const char* filename, const char* cnf);
+
+// Checks if a Cell is alive or dead and construct the CNF file 'cnf.in' for the solver
+void buildCNF(table_t* t, int line, int col);
 
 // Destroys table and frees memory
 void destroyTable(table_t* t);
