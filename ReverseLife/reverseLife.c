@@ -299,9 +299,8 @@ void writeCNFToFile(const char* filename, const char* cnf)
 
     // Write CNF header
     // Assuming a maximum of 8 variables and clauses for illustration; adjust as needed
-    int numVariables = 8;  
-    int numClauses = 256;  
-    fprintf(file, "p cnf %d %d\n", numVariables, numClauses);
+    int numVariables = 8;   
+    fprintf(file, "p cnf %d\n", numVariables);
 
     // Write CNF constraints
     fprintf(file, "%s", cnf);
@@ -309,8 +308,10 @@ void writeCNFToFile(const char* filename, const char* cnf)
     fclose(file);
 }
 
-#include <stdio.h>
-#include <stdbool.h>
+void generateAliveCNF(char* cnf, int line, int col)
+{
+
+}
 
 // Function to check if a combination has at least one alive element
 int hasAtLeastOneAlive(int combination[], int size) {
@@ -403,7 +404,7 @@ void generateDeadCNF(char* cnf, int line, int col)
     int combinationsOf2[84][2];
     int combinationsOf6[1764][6];
     
-    // 1. It was alive and remained alive
+    // 1. Preservation
 
     // Considering 
     // X: The cell itself
@@ -411,15 +412,8 @@ void generateDeadCNF(char* cnf, int line, int col)
     // N: All neighbours
         // (!x OR (OR(!c)) OR (OR(N - c)))
 
-    // (THE LIVING CELL) OR -- No need, verification done in buildCNF function
-    // (COMBINATION OF 2 WHERE AT LEAST ONE IS DEAD) OR
-    // (COMBINATION OF 6 WHERE AT LEAST ONE IS ALIVE)
-    // ([1] (1 0) (1 0 0 0 0 0))
-    // AND WITH ALL OF THEM 
-
     // Generate combinations of 2 where at least one is dead 
-    // (28(Combinations) * 3(variations))
-    // 84
+    // (28(Combinations) * 3(variations)) = 84
     generateCombinationsOf2(combinationsOf2);
 
     // for (int i = 0; i < 84; i++)
@@ -432,8 +426,7 @@ void generateDeadCNF(char* cnf, int line, int col)
     // }
     
     // Generate combinations of 6 where at least one is alive
-    // (28(Combinations) * 63(variations))
-    // 1764 (?)
+    // (28(Combinations) * 63(variations)) = 1764
     generateCombinationsOf6(combinationsOf6);
 
     // for (int i = 0; i < 1764; i++)
@@ -445,6 +438,10 @@ void generateDeadCNF(char* cnf, int line, int col)
     //     printf("\n");
     // }
 
+
+    // IMPORTANT - Literal "1" is the current cell
+    // - Literals "[2-9] are the neighbours"
+    
     // Generate CNF clauses for each combination of 2
     for (int i = 0; i < 84; ++i) 
     {
@@ -499,7 +496,7 @@ void generateDeadCNF(char* cnf, int line, int col)
         strcat(cnf, clause);
     }
     
-    // 2. It was dead and a new cell was born in place 
+    // 2. Life 
 }
 
 void buildCNF(table_t* t, int line, int col)
@@ -510,18 +507,14 @@ void buildCNF(table_t* t, int line, int col)
     // 1. Check if the selected cell is alive or dead
     if (t->table[line][col].status == ALIVE)
     {
+        // Test Loneliness, Overcrowding and Stagnation
 
-        // If it is alive, it means:
-            // It was alive in the past and remained alive
-            // It was dead and a new cell was born in place
+        // Generate the CNF file with constraints
+        generateAliveCNF(cnf, line, col);
     }
     else
     {
-
-        // If it is dead:
-            // It was dead and remained dead;
-            // It was alive and died of overpopulation;
-            // It was alive and died of loneliness;
+        // Test Preservation, Life
 
         // Generate the CNF file with constraints
         generateDeadCNF(cnf, line, col);
