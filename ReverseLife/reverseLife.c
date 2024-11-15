@@ -395,6 +395,64 @@ void generateCombinationsOf2(int combinations[84][2])
     }
 }
 
+void generateCombinationsOf3(int combinations[560][3]) 
+{
+    int index = 0;
+
+    // Loop through all triplets of neighbors
+    for (int i = 0; i < 8; ++i) 
+    {
+        for (int j = i + 1; j < 8; ++j) 
+        {
+            for (int k = j + 1; k < 8; ++k) 
+            {
+                // First neighbor is dead, others are alive
+                combinations[index][0] = -(i + 2);
+                combinations[index][1] = j + 2;
+                combinations[index][2] = k + 2;
+                index++;
+
+                // Second neighbor is dead, others are alive
+                combinations[index][0] = i + 2;
+                combinations[index][1] = -(j + 2);
+                combinations[index][2] = k + 2;
+                index++;
+
+                // Third neighbor is dead, others are alive
+                combinations[index][0] = i + 2;
+                combinations[index][1] = j + 2;
+                combinations[index][2] = -(k + 2);
+                index++;
+
+                // First and second neighbors are dead, third is alive
+                combinations[index][0] = -(i + 2);
+                combinations[index][1] = -(j + 2);
+                combinations[index][2] = k + 2;
+                index++;
+
+                // First and third neighbors are dead, second is alive
+                combinations[index][0] = -(i + 2);
+                combinations[index][1] = j + 2;
+                combinations[index][2] = -(k + 2);
+                index++;
+
+                // Second and third neighbors are dead, first is alive
+                combinations[index][0] = i + 2;
+                combinations[index][1] = -(j + 2);
+                combinations[index][2] = -(k + 2);
+                index++;
+
+                // All three neighbors are dead
+                combinations[index][0] = -(i + 2);
+                combinations[index][1] = -(j + 2);
+                combinations[index][2] = -(k + 2);
+                index++;
+            }
+        }
+    }
+}
+
+
 // Generates the CNF file based on the rules of an alive cell in the present
 // Rules: Life | Preservation
 void generateDeadCNF(char* cnf, int line, int col)
