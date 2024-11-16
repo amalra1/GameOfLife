@@ -326,19 +326,21 @@ void writeCNFToFile(const char* filename, const char* cnf)
 }
 
 // Check if a given combination has exactly 3 alive neighbors
-bool hasExactlyThreeAlive(int combination[], int size) 
+bool hasAlive(int aliveNum, int combination[], int size) 
 {
     int count = 0;
+
     for (int i = 0; i < size; ++i) 
     {
         if (combination[i] > 0)
             count++;
     }
 
-    return count == 3;
+    return count == aliveNum;
 }
 
-void generateThreeAliveNeighboursClauses(char* cnf, int* neighbors) 
+// Given aliveNum, generates combinations of neighbours with n of them alive 
+void generateAliveNeighboursClauses(int aliveNum, char* cnf, int* neighbors) 
 {
     char clause[256];
     int combination[8];
@@ -369,7 +371,7 @@ void generateThreeAliveNeighboursClauses(char* cnf, int* neighbors)
                                     combination[6] = g == 0 ? -neighbors[6] : neighbors[6];
                                     combination[7] = h == 0 ? -neighbors[7] : neighbors[7];
 
-                                    if (hasExactlyThreeAlive(combination, 8)) 
+                                    if (hasAlive(aliveNum, combination, 8)) 
                                     {
                                         // Generate a clause that negates this combination
                                         memset(clause, 0, sizeof(clause));
@@ -404,9 +406,26 @@ void staysDeadCNF(char* cnf, int line, int col)
     strcat(cnf, "-1 0\n");
 
     int neighbors[8] = {2, 3, 4, 5, 6, 7, 8, 9};
-    generateThreeAliveNeighboursClauses(cnf, neighbors);
+    generateAliveNeighboursClauses(3, cnf, neighbors);
 }
 
+// Needs to have 2 or 3 alive neighbours and was alive in t0
+void staysAliveCNF(char* cnf, int line, int col)
+{
+    int i = 0;
+
+    // Cell 1 is alive
+    strcat(cnf, "1 0\n");
+
+    int neighbors[8] = {2, 3, 4, 5, 6, 7, 8, 9};
+
+    while (i <= 8)
+    {
+        if (i != 2 && i != 3)
+            generateAliveNeighboursClauses(i, cnf, neighbors);
+        i++;
+    }
+} 
 
 void buildCNF(table_t* t, int line, int col)
 {
@@ -416,11 +435,10 @@ void buildCNF(table_t* t, int line, int col)
     // 1. Check if the selected cell is alive or dead
     if (t->table[line][col].status == ALIVE)
     {
-        
+        staysAliveCNF(cnf, line, col);
     }
     else
     {
-        // Generate the CNF file with constraints
         staysDeadCNF(cnf, line, col);
     }
 
