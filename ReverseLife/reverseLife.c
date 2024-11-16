@@ -277,8 +277,6 @@ void moveToNextState(table_t* t)
         }
     }
 
-    //printTable(&auxTable);
-
     // Update original Table
     for (int i = 0; i < t->lines; i++)
         for (int j = 0; j < t->columns; j++)
@@ -288,19 +286,38 @@ void moveToNextState(table_t* t)
     destroyTable(&auxTable);
 }
 
+// Function to count the number of lines (clauses) in the CNF string
+int countClauses(const char* cnf) 
+{
+    int count = 0;
+    const char* ptr = cnf;
+
+    while (*ptr) 
+    {
+        if (*ptr == '\n')
+            count++;
+        ptr++;
+    }
+
+    return count;
+}
+
+// Function to write CNF to file
 void writeCNFToFile(const char* filename, const char* cnf) 
 {
-    FILE* file = fopen("cnf.in", "w");
+    FILE* file = fopen(filename, "w");
     if (!file) 
     {
         perror("Failed to open file");
         exit(EXIT_FAILURE);
     }
 
+    // Count the number of variables and clauses
+    int numVariables = 9;  // Adjust this as needed
+    int numClauses = countClauses(cnf);
+
     // Write CNF header
-    // Assuming a maximum of 8 variables and clauses for illustration; adjust as needed
-    int numVariables = 8;   
-    fprintf(file, "p cnf %d\n", numVariables);
+    fprintf(file, "p cnf %d %d\n", numVariables, numClauses);
 
     // Write CNF constraints
     fprintf(file, "%s", cnf);
@@ -308,54 +325,68 @@ void writeCNFToFile(const char* filename, const char* cnf)
     fclose(file);
 }
 
-void generateAliveCNF(char* cnf, int line, int col)
+// Check if a given combination has exactly 3 alive neighbors
+bool hasExactlyThreeAlive(int combination[], int size) 
 {
-
-}
-
-// Function to check if a combination has at least one alive element
-int hasAtLeastOneAlive(int combination[], int size) {
-    for (int i = 0; i < size; ++i) {
-        if (combination[i] > 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-void generateCombinationsOf6(int combinations[1764][6]) 
-{
-    int arr[8] = {2, 3, 4, 5, 6, 7, 8, 9};
-    int index = 0;
-
-    for (int i = 0; i < 8; ++i)
+    int count = 0;
+    for (int i = 0; i < size; ++i) 
     {
-        for (int j = i + 1; j < 8; ++j)
-        { 
-            for (int k = j + 1; k < 8; ++k) 
-            {
-                for (int l = k + 1; l < 8; ++l)
-                { 
-                    for (int m = l + 1; m < 8; ++m)
-                    { 
-                        for (int n = m + 1; n < 8; ++n)
-                        {
-                            for (int v = 0; v < 64; ++v) 
-                            { 
-                                int combination[6] = {
-                                    (v & 1) ? -arr[i] : arr[i],
-                                    (v & 2) ? -arr[j] : arr[j],
-                                    (v & 4) ? -arr[k] : arr[k],
-                                    (v & 8) ? -arr[l] : arr[l],
-                                    (v & 16) ? -arr[m] : arr[m],
-                                    (v & 32) ? -arr[n] : arr[n],
-                                };
+        if (combination[i] > 0)
+            count++;
+    }
 
-                                if (hasAtLeastOneAlive(combination, 6)) {
-                                    for (int idx = 0; idx < 6; ++idx) {
-                                        combinations[index][idx] = combination[idx];
+    return count == 3;
+}
+
+void generateThreeAliveNeighboursClauses(char* cnf, int* neighbors) 
+{
+    char clause[256];
+    int combination[8];
+
+    // All possible combinations of 8 neighbors
+    for (int a = 0; a < 2; ++a) 
+    {
+        for (int b = 0; b < 2; ++b) 
+        {
+            for (int c = 0; c < 2; ++c) 
+            {
+                for (int d = 0; d < 2; ++d) 
+                {
+                    for (int e = 0; e < 2; ++e) 
+                    {
+                        for (int f = 0; f < 2; ++f) 
+                        {
+                            for (int g = 0; g < 2; ++g) 
+                            {
+                                for (int h = 0; h < 2; ++h) 
+                                {
+                                    combination[0] = a == 0 ? -neighbors[0] : neighbors[0];
+                                    combination[1] = b == 0 ? -neighbors[1] : neighbors[1];
+                                    combination[2] = c == 0 ? -neighbors[2] : neighbors[2];
+                                    combination[3] = d == 0 ? -neighbors[3] : neighbors[3];
+                                    combination[4] = e == 0 ? -neighbors[4] : neighbors[4];
+                                    combination[5] = f == 0 ? -neighbors[5] : neighbors[5];
+                                    combination[6] = g == 0 ? -neighbors[6] : neighbors[6];
+                                    combination[7] = h == 0 ? -neighbors[7] : neighbors[7];
+
+                                    if (hasExactlyThreeAlive(combination, 8)) 
+                                    {
+                                        // Generate a clause that negates this combination
+                                        memset(clause, 0, sizeof(clause));
+                                        for (int i = 0; i < 8; ++i) 
+                                        {
+                                            char idx[4];
+                                            snprintf(idx, sizeof(idx), "%d", -combination[i]);
+                                            strcat(clause, idx);
+                                            strcat(clause, " ");
+                                        }
+                                        
+                                        strcat(clause, "0\n");
+
+                                        // Add unique clause to CNF
+                                        if (strstr(cnf, clause) == NULL) 
+                                            strcat(cnf, clause);
                                     }
-                                    index++;
                                 }
                             }
                         }
@@ -363,199 +394,19 @@ void generateCombinationsOf6(int combinations[1764][6])
                 }
             }
         }
-    } 
+    }
 }
 
-void generateCombinationsOf2(int combinations[84][2]) 
+// Can't have exactly 3 neighbours and was dead in t0
+void staysDeadCNF(char* cnf, int line, int col) 
 {
-    int index = 0;
+    // Cell 1 is dead
+    strcat(cnf, "-1 0\n");
 
-    // Loop through all pairs of neighbors
-    for (int i = 0; i < 8; ++i) 
-    {
-        for (int j = i + 1; j < 8; ++j) 
-        {           
-            // Combination where the first neighbor is dead
-            combinations[index][0] = -(i + 2);
-            combinations[index][1] = j + 2;
-            index++;
-            
-            // Combination where the second neighbor is dead
-            combinations[index][0] = i + 2;
-            combinations[index][1] = -(j + 2);
-            index++;
-            
-            // Combination where both neighbors are dead
-            combinations[index][0] = -(i + 2);
-            combinations[index][1] = -(j + 2);
-            index++;
-
-            //printf("%d %d\n", i + 1, j + 1);
-        }
-    }
+    int neighbors[8] = {2, 3, 4, 5, 6, 7, 8, 9};
+    generateThreeAliveNeighboursClauses(cnf, neighbors);
 }
 
-void generateCombinationsOf3(int combinations[560][3]) 
-{
-    int index = 0;
-
-    // Loop through all triplets of neighbors
-    for (int i = 0; i < 8; ++i) 
-    {
-        for (int j = i + 1; j < 8; ++j) 
-        {
-            for (int k = j + 1; k < 8; ++k) 
-            {
-                // First neighbor is dead, others are alive
-                combinations[index][0] = -(i + 2);
-                combinations[index][1] = j + 2;
-                combinations[index][2] = k + 2;
-                index++;
-
-                // Second neighbor is dead, others are alive
-                combinations[index][0] = i + 2;
-                combinations[index][1] = -(j + 2);
-                combinations[index][2] = k + 2;
-                index++;
-
-                // Third neighbor is dead, others are alive
-                combinations[index][0] = i + 2;
-                combinations[index][1] = j + 2;
-                combinations[index][2] = -(k + 2);
-                index++;
-
-                // First and second neighbors are dead, third is alive
-                combinations[index][0] = -(i + 2);
-                combinations[index][1] = -(j + 2);
-                combinations[index][2] = k + 2;
-                index++;
-
-                // First and third neighbors are dead, second is alive
-                combinations[index][0] = -(i + 2);
-                combinations[index][1] = j + 2;
-                combinations[index][2] = -(k + 2);
-                index++;
-
-                // Second and third neighbors are dead, first is alive
-                combinations[index][0] = i + 2;
-                combinations[index][1] = -(j + 2);
-                combinations[index][2] = -(k + 2);
-                index++;
-
-                // All three neighbors are dead
-                combinations[index][0] = -(i + 2);
-                combinations[index][1] = -(j + 2);
-                combinations[index][2] = -(k + 2);
-                index++;
-            }
-        }
-    }
-}
-
-
-// Generates the CNF file based on the rules of an alive cell in the present
-// Rules: Life | Preservation
-void generateDeadCNF(char* cnf, int line, int col)
-{
-    // Buffer to store the clause 
-    char clause[64];
-    int combinationsOf2[84][2];
-    int combinationsOf6[1764][6];
-    
-    // 1. Preservation
-
-    // Considering 
-    // X: The cell itself
-    // C: All of the size 2 combinations of neighours;
-    // N: All neighbours
-        // (!x OR (OR(!c)) OR (OR(N - c)))
-
-    // Generate combinations of 2 where at least one is dead 
-    // (28(Combinations) * 3(variations)) = 84
-    generateCombinationsOf2(combinationsOf2);
-
-    // for (int i = 0; i < 84; i++)
-    // {
-    //     for (int j = 0; j < 2; j++)
-    //     {
-    //         printf("%d ", combinationsOf2[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    
-    // Generate combinations of 6 where at least one is alive
-    // (28(Combinations) * 63(variations)) = 1764
-    generateCombinationsOf6(combinationsOf6);
-
-    // for (int i = 0; i < 1764; i++)
-    // {
-    //     for (int j = 0; j < 6; j++)
-    //     {
-    //         printf("%d ", combinationsOf6[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-
-
-    // IMPORTANT - Literal "1" is the current cell
-    // - Literals "[2-9] are the neighbours"
-    
-    // Generate CNF clauses for each combination of 2
-    for (int i = 0; i < 84; ++i) 
-    {
-        memset(clause, 0, sizeof(clause));
-        strcat(clause, "1 ");
-
-        for (int j = 0; j < 2; ++j) 
-        {
-            if (combinationsOf2[i][j] < 0) 
-            {
-                strcat(clause, "-");
-                char idx[4];
-                snprintf(idx, sizeof(idx), "%d", -combinationsOf2[i][j]);
-                strcat(clause, idx);
-            } 
-            else
-            {
-                char idx[4];
-                snprintf(idx, sizeof(idx), "%d", combinationsOf2[i][j]);
-                strcat(clause, idx);
-            }
-            strcat(clause, " ");
-        }
-        strcat(clause, "0\n");
-        strcat(cnf, clause);
-    }
-
-    // Generate CNF clauses for each combination of 6
-    for (int i = 0; i < 1764; ++i) 
-    {
-        memset(clause, 0, sizeof(clause));
-        strcat(clause, "1 ");
-
-        for (int j = 0; j < 6; ++j) 
-        {
-            if (combinationsOf6[i][j] < 0) 
-            {
-                strcat(clause, "-");
-                char idx[4];
-                snprintf(idx, sizeof(idx), "%d", -combinationsOf6[i][j]);
-                strcat(clause, idx);
-            } 
-            else 
-            {
-                char idx[4];
-                snprintf(idx, sizeof(idx), "%d", combinationsOf6[i][j]);
-                strcat(clause, idx);
-            }
-            strcat(clause, " ");
-        }
-        strcat(clause, "0\n");
-        strcat(cnf, clause);
-    }
-    
-    // 2. Life 
-}
 
 void buildCNF(table_t* t, int line, int col)
 {
@@ -565,17 +416,12 @@ void buildCNF(table_t* t, int line, int col)
     // 1. Check if the selected cell is alive or dead
     if (t->table[line][col].status == ALIVE)
     {
-        // Test Loneliness, Overcrowding and Stagnation
-
-        // Generate the CNF file with constraints
-        generateAliveCNF(cnf, line, col);
+        
     }
     else
     {
-        // Test Preservation, Life
-
         // Generate the CNF file with constraints
-        generateDeadCNF(cnf, line, col);
+        staysDeadCNF(cnf, line, col);
     }
 
     // Write the constraints into the cnf file

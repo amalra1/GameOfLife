@@ -2,6 +2,7 @@
 #define REVERSE_LIFE
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 /*
     MADE BY
@@ -10,6 +11,7 @@
 
 #define ALIVE 1
 #define DEAD 0
+#define MAX_CLAUSES 8000000
 
 typedef struct cell
 {
