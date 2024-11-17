@@ -425,7 +425,56 @@ void staysAliveCNF(char* cnf, int line, int col)
             generateAliveNeighboursClauses(i, cnf, neighbors);
         i++;
     }
-} 
+}
+
+int* solutionsToIntegers(FILE* file)
+{
+    int* neighborStates = malloc(sizeof(int) * 8);
+    char line[64];
+
+    // Gets solution line from .out
+    fgets(line, sizeof(line), file);
+    fgets(line, sizeof(line), file);
+
+    char* token = strtok(line, " ");
+
+    // Skip number 1
+    token = strtok(NULL, " "); 
+
+    // Turn into integers
+    for (int i = 0; i < 8 && token != NULL; i++)
+    { 
+        neighborStates[i] = atoi(token);
+        token = strtok(NULL, " "); 
+    }
+
+    return neighborStates;
+}
+
+void fillNeighbors(table_t* t0, table_t* t1, int line, int col, int* neighborStates)
+{
+    int neighborOffsets[8][2] = 
+    {
+        {-1, -1}, // Top-left
+        {-1,  0}, // Top-center
+        {-1,  1}, // Top-right
+        { 0, -1}, // Left
+        { 0,  1}, // Right
+        { 1, -1}, // Bottom-left
+        { 1,  0}, // Bottom-center
+        { 1,  1}  // Bottom-right
+    };
+
+    // Update the neighbors' states based on neighborStates array
+    for (int i = 0; i < 8; ++i) 
+    {
+        int neighborLine = line + neighborOffsets[i][0];
+        int neighborCol = col + neighborOffsets[i][1];
+
+        if (neighborLine >= 0 && neighborLine < t1->lines && neighborCol >= 0 && neighborCol < t1->columns)
+            t0->table[neighborLine][neighborCol].status = (neighborStates[i] > 0) ? ALIVE : DEAD;
+    }
+}
 
 void buildPastTable(table_t* t0, table_t* t1, int line, int col)
 {
@@ -434,7 +483,7 @@ void buildPastTable(table_t* t0, table_t* t1, int line, int col)
     // Constraints buffer
     char cnf[MAX_CLAUSES] = "";
 
-    // 1. Check if the selected cell is alive or dead
+    // Check if the selected cell is alive or dead
     if (t1->table[line][col].status == ALIVE)
     {
         // if 'isBorn' fails, try 'staysAliveCNF'
@@ -467,54 +516,18 @@ void buildPastTable(table_t* t0, table_t* t1, int line, int col)
         exit(EXIT_FAILURE); 
     }
 
-    char lineBuffer[256];
-    int neighborStates[8];
+    int* neighborStates = solutionsToIntegers(file);
 
-    // Gets solution line from .out
-    fgets(lineBuffer, sizeof(lineBuffer), file);
-    fgets(lineBuffer, sizeof(lineBuffer), file);
-
-    char* token = strtok(lineBuffer, " ");
-
-    // Skip number 1
-    token = strtok(NULL, " "); 
-
-    // Turn into integers
-    for (int i = 0; i < 8 && token != NULL; i++)
-    { 
-        neighborStates[i] = atoi(token);
-        token = strtok(NULL, " "); 
-    }
-
+    // Talking about the analyzed cell
     if (aliveInPast)
         t0->table[line][col].status = ALIVE;
     else
         t0->table[line][col].status = DEAD;
 
-    // Fill cell[line][col]'s neighbours
-    int neighborOffsets[8][2] = 
-    {
-        {-1, -1}, // Top-left
-        {-1,  0}, // Top-center
-        {-1,  1}, // Top-right
-        { 0, -1}, // Left
-        { 0,  1}, // Right
-        { 1, -1}, // Bottom-left
-        { 1,  0}, // Bottom-center
-        { 1,  1}  // Bottom-right
-    };
-
-    // Update the neighbors' states based on neighborStates array
-    for (int i = 0; i < 8; ++i) 
-    {
-        int neighborLine = line + neighborOffsets[i][0];
-        int neighborCol = col + neighborOffsets[i][1];
-
-        if (neighborLine >= 0 && neighborLine < t1->lines && neighborCol >= 0 && neighborCol < t1->columns) 
-            t0->table[neighborLine][neighborCol].status = (neighborStates[i] > 0) ? ALIVE : DEAD;
-    }
+    fillNeighbors(t0, t1, line, col, neighborStates);
 
     fclose(file);
+    free(neighborStates);
 }
 
 void destroyTable(table_t* t) 
