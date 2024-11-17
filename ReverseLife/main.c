@@ -8,7 +8,8 @@ int main()
     scanf("%d", &lines);
     scanf("%d", &columns);
 
-    table_t t = initializeTable(lines, columns);
+    table_t t1 = initializeTable(lines, columns);
+    table_t t0 = initializeTable(lines, columns);
 
     // Mallocs presentState matrix
     int** presentState = (int**)malloc(lines * sizeof(int*));
@@ -20,15 +21,16 @@ int main()
         for (int j = 0; j < columns; j++)
             scanf("%d", &presentState[i][j]);
 
-    setInitialState(&t, presentState);
+    setInitialState(&t1, presentState);
 
     // Testing for the middle cell
-    buildCNF(&t, lines/2, columns/2);;
+    buildPastTable(&t0, &t1, lines/2, columns/2);
 
-    //printTable(&t);
+    printTable(&t1);
+    printTable(&t0);
 
     // Frees
-    destroyTable(&t);
+    destroyTable(&t1);
     for (int i = 0; i < lines; i++)
         free(presentState[i]);
     free(presentState);

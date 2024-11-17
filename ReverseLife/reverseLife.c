@@ -427,23 +427,94 @@ void staysAliveCNF(char* cnf, int line, int col)
     }
 } 
 
-void buildCNF(table_t* t, int line, int col)
+void buildPastTable(table_t* t0, table_t* t1, int line, int col)
 {
+    int aliveInPast = 0;
+
     // Constraints buffer
-    char cnf[81920] = "";
+    char cnf[MAX_CLAUSES] = "";
 
     // 1. Check if the selected cell is alive or dead
-    if (t->table[line][col].status == ALIVE)
+    if (t1->table[line][col].status == ALIVE)
     {
+        // if 'isBorn' fails, try 'staysAliveCNF'
+
         staysAliveCNF(cnf, line, col);
+        aliveInPast = 1;
     }
     else
     {
         staysDeadCNF(cnf, line, col);
+        aliveInPast = 0;
+
+        // If stays dead fails, try the other possible ways
+        // 'diesCNF'
+        // underpopulation first then overpopulation
     }
 
     // Write the constraints into the cnf file
     writeCNFToFile("cnf.in", cnf);
+    memset(cnf, 0, sizeof(cnf));
+
+    // Execute minisat and take a solution
+    system("minisat cnf.in cnf.out");
+
+    // Read solution from .out file
+    FILE* file = fopen("cnf.out", "r");
+    if (!file)
+    { 
+        perror("Failed to open cnf.out file"); 
+        exit(EXIT_FAILURE); 
+    }
+
+    char lineBuffer[256];
+    int neighborStates[8];
+
+    // Gets solution line from .out
+    fgets(lineBuffer, sizeof(lineBuffer), file);
+    fgets(lineBuffer, sizeof(lineBuffer), file);
+
+    char* token = strtok(lineBuffer, " ");
+
+    // Skip number 1
+    token = strtok(NULL, " "); 
+
+    // Turn into integers
+    for (int i = 0; i < 8 && token != NULL; i++)
+    { 
+        neighborStates[i] = atoi(token);
+        token = strtok(NULL, " "); 
+    }
+
+    if (aliveInPast)
+        t0->table[line][col].status = ALIVE;
+    else
+        t0->table[line][col].status = DEAD;
+
+    // Fill cell[line][col]'s neighbours
+    int neighborOffsets[8][2] = 
+    {
+        {-1, -1}, // Top-left
+        {-1,  0}, // Top-center
+        {-1,  1}, // Top-right
+        { 0, -1}, // Left
+        { 0,  1}, // Right
+        { 1, -1}, // Bottom-left
+        { 1,  0}, // Bottom-center
+        { 1,  1}  // Bottom-right
+    };
+
+    // Update the neighbors' states based on neighborStates array
+    for (int i = 0; i < 8; ++i) 
+    {
+        int neighborLine = line + neighborOffsets[i][0];
+        int neighborCol = col + neighborOffsets[i][1];
+
+        if (neighborLine >= 0 && neighborLine < t1->lines && neighborCol >= 0 && neighborCol < t1->columns) 
+            t0->table[neighborLine][neighborCol].status = (neighborStates[i] > 0) ? ALIVE : DEAD;
+    }
+
+    fclose(file);
 }
 
 void destroyTable(table_t* t) 

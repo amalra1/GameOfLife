@@ -11,7 +11,7 @@
 
 #define ALIVE 1
 #define DEAD 0
-#define MAX_CLAUSES 8000000
+#define MAX_CLAUSES 800000
 
 typedef struct cell
 {
@@ -41,7 +41,7 @@ void printTable(table_t* t);
 void writeCNFToFile(const char* filename, const char* cnf);
 
 // Checks if a Cell is alive or dead and construct the CNF file 'cnf.in' for the solver
-void buildCNF(table_t* t, int line, int col);
+void buildPastTable(table_t* t0, table_t* t1, int line, int col);
 
 // Destroys table and frees memory
 void destroyTable(table_t* t);
