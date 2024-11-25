@@ -9,6 +9,7 @@ table_t initializeTable(int lines, int columns)
     table_t t;
     t.lines = lines;
     t.columns = columns;
+    int index = 1;
 
     // Allocate memory for the table
     t.table = (cell_t**)malloc(lines * sizeof(cell_t*));
@@ -17,7 +18,11 @@ table_t initializeTable(int lines, int columns)
         t.table[i] = (cell_t*)malloc(columns * sizeof(cell_t));
 
         for (int j = 0; j < columns; j++)
+        {
             t.table[i][j].status = DEAD;
+            t.table[i][j].index = index;
+            index++;
+        }
     }
 
     return t;
@@ -303,7 +308,7 @@ int countClauses(const char* cnf)
 }
 
 // Function to write CNF to file
-void writeCNFToFile(const char* filename, const char* cnf) 
+void writeCNFToFile(const char* filename, const char* cnf, int variablesNum) 
 {
     FILE* file = fopen(filename, "w");
     if (!file) 
@@ -313,11 +318,10 @@ void writeCNFToFile(const char* filename, const char* cnf)
     }
 
     // Count the number of variables and clauses
-    int numVariables = 9;  // Adjust this as needed
     int numClauses = countClauses(cnf);
 
     // Write CNF header
-    fprintf(file, "p cnf %d %d\n", numVariables, numClauses);
+    fprintf(file, "p cnf %d %d\n", variablesNum, numClauses);
 
     // Write CNF constraints
     fprintf(file, "%s", cnf);
@@ -325,209 +329,157 @@ void writeCNFToFile(const char* filename, const char* cnf)
     fclose(file);
 }
 
-// Check if a given combination has exactly 3 alive neighbors
-bool hasAlive(int aliveNum, int combination[], int size) 
-{
+// Função que verifica se uma combinação tem exatamente 'aliveNum' vizinhos vivos
+int hasAlive(int aliveNum, int* combination, int size) {
     int count = 0;
-
-    for (int i = 0; i < size; ++i) 
-    {
-        if (combination[i] > 0)
+    for (int i = 0; i < size; ++i) {
+        if (combination[i] > 0) {
             count++;
+        }
     }
-
     return count == aliveNum;
 }
 
-// Given aliveNum, generates combinations of neighbours with n of them alive 
-void generateAliveNeighboursClauses(int aliveNum, char* cnf, int* neighbors) 
+// Função que gera todas as combinações de vizinhos com exatamente 'aliveNum' vizinhos vivos
+void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf, int* neighbors) 
 {
+    int n = 1 << combinationSize; // 2^combinationSize
     char clause[256];
-    int combination[8];
 
-    // All possible combinations of 8 neighbors
-    for (int a = 0; a < 2; ++a) 
+    for (int i = 0; i < n; ++i) 
     {
-        for (int b = 0; b < 2; ++b) 
+        int combination[combinationSize];
+
+        for (int j = 0; j < combinationSize; ++j) 
         {
-            for (int c = 0; c < 2; ++c) 
+            int sign = (i & (1 << j)) ? 1 : -1; // Alterna o sinal
+            combination[j] = sign * neighbors[j];
+        }
+
+        if (hasAlive(aliveNum, combination, combinationSize)) 
+        {
+            memset(clause, 0, sizeof(clause));
+            for (int j = 0; j < combinationSize; ++j) 
             {
-                for (int d = 0; d < 2; ++d) 
-                {
-                    for (int e = 0; e < 2; ++e) 
-                    {
-                        for (int f = 0; f < 2; ++f) 
-                        {
-                            for (int g = 0; g < 2; ++g) 
-                            {
-                                for (int h = 0; h < 2; ++h) 
-                                {
-                                    combination[0] = a == 0 ? -neighbors[0] : neighbors[0];
-                                    combination[1] = b == 0 ? -neighbors[1] : neighbors[1];
-                                    combination[2] = c == 0 ? -neighbors[2] : neighbors[2];
-                                    combination[3] = d == 0 ? -neighbors[3] : neighbors[3];
-                                    combination[4] = e == 0 ? -neighbors[4] : neighbors[4];
-                                    combination[5] = f == 0 ? -neighbors[5] : neighbors[5];
-                                    combination[6] = g == 0 ? -neighbors[6] : neighbors[6];
-                                    combination[7] = h == 0 ? -neighbors[7] : neighbors[7];
-
-                                    if (hasAlive(aliveNum, combination, 8)) 
-                                    {
-                                        // Generate a clause that negates this combination
-                                        memset(clause, 0, sizeof(clause));
-                                        for (int i = 0; i < 8; ++i) 
-                                        {
-                                            char idx[4];
-                                            snprintf(idx, sizeof(idx), "%d", -combination[i]);
-                                            strcat(clause, idx);
-                                            strcat(clause, " ");
-                                        }
-                                        
-                                        strcat(clause, "0\n");
-
-                                        // Add unique clause to CNF
-                                        if (strstr(cnf, clause) == NULL) 
-                                            strcat(cnf, clause);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                char idx[4];
+                snprintf(idx, sizeof(idx), "%d", combination[j]);
+                strcat(clause, idx);
+                strcat(clause, " ");
             }
+
+            strcat(clause, "0\n");
+            strcat(cnf, clause);
         }
     }
 }
 
-// Can't have exactly 3 neighbours and was dead in t0
-void staysDeadCNF(char* cnf, int line, int col) 
-{
-    // Cell 1 is dead
-    strcat(cnf, "-1 0\n");
-
-    int neighbors[8] = {2, 3, 4, 5, 6, 7, 8, 9};
-    generateAliveNeighboursClauses(3, cnf, neighbors);
-}
-
-// Needs to have 2 or 3 alive neighbours and was alive in t0
-void staysAliveCNF(char* cnf, int line, int col)
+int staysAliveCNF(char* cnf, int* neighbors, int neighborsSize)
 {
     int i = 0;
 
-    // Cell 1 is alive
-    strcat(cnf, "1 0\n");
-
-    int neighbors[8] = {2, 3, 4, 5, 6, 7, 8, 9};
-
+    // Generate clauses for cases where i is not 2
     while (i <= 8)
     {
-        if (i != 2 && i != 3)
-            generateAliveNeighboursClauses(i, cnf, neighbors);
+        if (i != 2 && i != 3) 
+            generateAliveNeighboursClauses(neighborsSize, i, cnf, neighbors);
         i++;
     }
+
+    return 1;
 }
 
-int* solutionsToIntegers(FILE* file)
+int getNeighborsIndexes(table_t* table, int x, int y, int* neighbors) 
 {
-    int* neighborStates = malloc(sizeof(int) * 8);
-    char line[64];
+    int neighborsIndex = 0;
 
-    // Gets solution line from .out
-    fgets(line, sizeof(line), file);
-    fgets(line, sizeof(line), file);
+    // Top
+    if (x != 0)
+    {
+        if (y != 0)
+        {
+            neighbors[neighborsIndex] = table->table[x - 1][y - 1].index;
+            neighborsIndex++;
+        }
 
-    char* token = strtok(line, " ");
+        neighbors[neighborsIndex] = table->table[x - 1][y].index;
+        neighborsIndex++;
 
-    // Skip number 1
-    token = strtok(NULL, " "); 
-
-    // Turn into integers
-    for (int i = 0; i < 8 && token != NULL; i++)
-    { 
-        neighborStates[i] = atoi(token);
-        token = strtok(NULL, " "); 
+        if (y != table->columns - 1)
+        {
+            neighbors[neighborsIndex] = table->table[x - 1][y + 1].index;
+            neighborsIndex++;
+        }
     }
 
-    return neighborStates;
+    // Left
+    if (y != 0)
+    {
+        neighbors[neighborsIndex] = table->table[x][y - 1].index;
+        neighborsIndex++;
+    }
+    
+    // Right
+    if (y != table->columns - 1)
+    {
+        neighbors[neighborsIndex] = table->table[x][y + 1].index;
+        neighborsIndex++;
+    }
+
+    // Bottom
+    if (x != table->lines - 1)
+    {
+        if (y != 0)
+        {
+            neighbors[neighborsIndex] = table->table[x + 1][y - 1].index;
+            neighborsIndex++;
+        }
+
+        neighbors[neighborsIndex] = table->table[x + 1][y].index;
+        neighborsIndex++;
+
+        if (y != table->columns - 1)
+        {
+            neighbors[neighborsIndex] = table->table[x + 1][y + 1].index;
+            neighborsIndex++;
+        }
+    }
+
+    return neighborsIndex;
 }
 
-void fillNeighbors(table_t* t0, table_t* t1, int line, int col, int* neighborStates)
+void buildPastTable(table_t* t0, table_t* t1)
 {
-    int neighborOffsets[8][2] = 
+    int neighbors[8], neighborsSize = 0;
+    char clause[64];
+    char cnf[MAX_CLAUSES];
+
+    for (int i = 0; i < t1->lines; i++)
     {
-        {-1, -1}, // Top-left
-        {-1,  0}, // Top-center
-        {-1,  1}, // Top-right
-        { 0, -1}, // Left
-        { 0,  1}, // Right
-        { 1, -1}, // Bottom-left
-        { 1,  0}, // Bottom-center
-        { 1,  1}  // Bottom-right
-    };
+        for (int j = 0; j < t1->columns; j++)
+        {
+            // Reset neighbors
+            for (int i = 0; i < 8; i++)
+                neighbors[i] = 0;
 
-    // Update the neighbors' states based on neighborStates array
-    for (int i = 0; i < 8; ++i) 
-    {
-        int neighborLine = line + neighborOffsets[i][0];
-        int neighborCol = col + neighborOffsets[i][1];
+            // Get cell's neighbors indexes
+            neighborsSize = getNeighborsIndexes(t1, i, j, neighbors);
 
-        if (neighborLine >= 0 && neighborLine < t1->lines && neighborCol >= 0 && neighborCol < t1->columns)
-            t0->table[neighborLine][neighborCol].status = (neighborStates[i] > 0) ? ALIVE : DEAD;
-    }
-}
+            if (t1->table[i][j].status == ALIVE)
+            {
+                // Generate all the possible combinations of neighbors that could have generated the cell
+                staysAliveCNF(cnf, neighbors, neighborsSize);
+            }
 
-void buildPastTable(table_t* t0, table_t* t1, int line, int col)
-{
-    int aliveInPast = 0;
-
-    // Constraints buffer
-    char cnf[MAX_CLAUSES] = "";
-
-    // Check if the selected cell is alive or dead
-    if (t1->table[line][col].status == ALIVE)
-    {
-        // if 'isBorn' fails, try 'staysAliveCNF'
-
-        staysAliveCNF(cnf, line, col);
-        aliveInPast = 1;
-    }
-    else
-    {
-        staysDeadCNF(cnf, line, col);
-        aliveInPast = 0;
-
-        // If stays dead fails, try the other possible ways
-        // 'diesCNF'
-        // underpopulation first then overpopulation
+            else
+            {
+                // Generate all the possible combinations of neighbors that could have generated the cell
+                //staysDeadCNF(cnf, neighbors, neighborsSize);
+            }
+        }
     }
 
-    // Write the constraints into the cnf file
-    writeCNFToFile("cnf.in", cnf);
-    memset(cnf, 0, sizeof(cnf));
-
-    // Execute minisat and take a solution
-    system("minisat cnf.in cnf.out");
-
-    // Read solution from .out file
-    FILE* file = fopen("cnf.out", "r");
-    if (!file)
-    { 
-        perror("Failed to open cnf.out file"); 
-        exit(EXIT_FAILURE); 
-    }
-
-    int* neighborStates = solutionsToIntegers(file);
-
-    // Talking about the analyzed cell
-    if (aliveInPast)
-        t0->table[line][col].status = ALIVE;
-    else
-        t0->table[line][col].status = DEAD;
-
-    fillNeighbors(t0, t1, line, col, neighborStates);
-
-    fclose(file);
-    free(neighborStates);
+    // Write to the file
+    writeCNFToFile("cnf.in", cnf, t1->lines * t1->columns);
 }
 
 void destroyTable(table_t* t) 

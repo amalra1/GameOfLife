@@ -16,6 +16,7 @@
 typedef struct cell
 {
     int status;     // Alive or dead
+    int index;
 } cell_t;
 
 typedef struct table
@@ -38,10 +39,10 @@ void moveToNextState(table_t* t);
 void printTable(table_t* t);
 
 // Writes the cnf obtainerd on a file
-void writeCNFToFile(const char* filename, const char* cnf);
+void writeCNFToFile(const char* filename, const char* cnf, int variablesNum);
 
 // Checks if a Cell is alive or dead and construct the CNF file 'cnf.in' for the solver
-void buildPastTable(table_t* t0, table_t* t1, int line, int col);
+void buildPastTable(table_t* t0, table_t* t1);
 
 // Destroys table and frees memory
 void destroyTable(table_t* t);

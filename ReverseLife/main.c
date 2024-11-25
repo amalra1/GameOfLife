@@ -22,9 +22,10 @@ int main()
             scanf("%d", &presentState[i][j]);
 
     setInitialState(&t1, presentState);
+    //setInitialState(&t0, presentState);
 
-    // Testing for the middle cell
-    buildPastTable(&t0, &t1, lines/2, columns/2);
+    // Testing for a specific cell
+    buildPastTable(&t0, &t1);
 
     printTable(&t1);
     printTable(&t0);
