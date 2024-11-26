@@ -360,10 +360,13 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
         {
             memset(clause, 0, sizeof(clause));
 
-            char cellIndexString[4];
-            sprintf(cellIndexString, "%d", cellIndex);
-            strcat(clause, cellIndexString);
-            strcat(clause, " ");
+            if (cellIndex != 0)
+            {
+                char cellIndexString[4];
+                sprintf(cellIndexString, "%d", cellIndex);
+                strcat(clause, cellIndexString);
+                strcat(clause, " ");
+            }
 
             for (int j = 0; j < combinationSize; ++j) 
             {
@@ -527,8 +530,8 @@ void buildPastTable(table_t* t0, table_t* t1)
             {
                 // Generate all the possible combinations of neighbors that could have generated the cell
 
-                //staysAliveCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
-                //isBornCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
+                staysAliveCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
+                isBornCNF(cnf, 0, neighbors, neighborsSize);
             }
 
             else
@@ -536,8 +539,8 @@ void buildPastTable(table_t* t0, table_t* t1)
                 // Generate all the possible combinations of neighbors that could have generated the cell
 
                 staysDeadCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
-                underPopulationCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
-                overPopulationCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
+                underPopulationCNF(cnf, 0, neighbors, neighborsSize);
+                overPopulationCNF(cnf, 0, neighbors, neighborsSize);
             }
         }
     }
