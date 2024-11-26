@@ -424,7 +424,7 @@ int underPopulationCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSi
     // Generate clauses for cases where i is > 1
     while (i <= 8)
     {
-        if (i > 1) 
+        if (i >= 2) 
             generateAliveNeighboursClauses(neighborsSize, i, cnf, cellIndex, neighbors);
         i++;
     }
@@ -439,7 +439,7 @@ int overPopulationCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSiz
     // Generate clauses for cases where i is < 3
     while (i <= 8)
     {
-        if (i < 3) 
+        if (i > 3) 
             generateAliveNeighboursClauses(neighborsSize, i, cnf, cellIndex, neighbors);
         i++;
     }
@@ -526,7 +526,7 @@ void buildPastTable(table_t* t0, table_t* t1)
             if (t1->table[i][j].status == ALIVE)
             {
                 // Generate all the possible combinations of neighbors that could have generated the cell
-                
+
                 //staysAliveCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
                 //isBornCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
             }
@@ -536,8 +536,8 @@ void buildPastTable(table_t* t0, table_t* t1)
                 // Generate all the possible combinations of neighbors that could have generated the cell
 
                 staysDeadCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
-                //underPopulationCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
-                //overPopulationCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
+                underPopulationCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
+                overPopulationCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
             }
         }
     }
