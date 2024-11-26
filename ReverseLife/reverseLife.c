@@ -341,7 +341,7 @@ int hasAlive(int aliveNum, int* combination, int size) {
 }
 
 // Função que gera todas as combinações de vizinhos com exatamente 'aliveNum' vizinhos vivos
-void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf, int* neighbors) 
+void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf, int cellIndex, int* neighbors) 
 {
     int n = 1 << combinationSize; // 2^combinationSize
     char clause[256];
@@ -359,10 +359,16 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
         if (hasAlive(aliveNum, combination, combinationSize)) 
         {
             memset(clause, 0, sizeof(clause));
+
+            char cellIndexString[4];
+            sprintf(cellIndexString, "%d", cellIndex);
+            strcat(clause, cellIndexString);
+            strcat(clause, " ");
+
             for (int j = 0; j < combinationSize; ++j) 
             {
                 char idx[4];
-                snprintf(idx, sizeof(idx), "%d", combination[j]);
+                snprintf(idx, sizeof(idx), "%d", -combination[j]);
                 strcat(clause, idx);
                 strcat(clause, " ");
             }
@@ -373,15 +379,68 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
     }
 }
 
-int staysAliveCNF(char* cnf, int* neighbors, int neighborsSize)
+int staysAliveCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSize)
 {
     int i = 0;
 
-    // Generate clauses for cases where i is not 2
+    // Generate clauses for cases where i is not 2 or 3
     while (i <= 8)
     {
         if (i != 2 && i != 3) 
-            generateAliveNeighboursClauses(neighborsSize, i, cnf, neighbors);
+            generateAliveNeighboursClauses(neighborsSize, i, cnf, cellIndex, neighbors);
+        i++;
+    }
+
+    return 1;
+}
+
+int isBornCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSize)
+{
+    int i = 0;
+
+    // Generate clauses for cases where i is not 3
+    while (i <= 8)
+    {
+        if (i != 3) 
+            generateAliveNeighboursClauses(neighborsSize, i, cnf, cellIndex, neighbors);
+        i++;
+    }
+
+    return 1;
+}
+
+int staysDeadCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSize)
+{
+    // Generate clauses for cases where i is 3
+    generateAliveNeighboursClauses(neighborsSize, 3, cnf, cellIndex, neighbors);
+
+    return 1;
+}
+
+int underPopulationCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSize)
+{
+    int i = 0;
+
+    // Generate clauses for cases where i is > 1
+    while (i <= 8)
+    {
+        if (i > 1) 
+            generateAliveNeighboursClauses(neighborsSize, i, cnf, cellIndex, neighbors);
+        i++;
+    }
+
+    return 1;
+}
+
+int overPopulationCNF(char* cnf, int cellIndex, int* neighbors, int neighborsSize)
+{
+    int i = 0;
+
+    // Generate clauses for cases where i is < 3
+    while (i <= 8)
+    {
+        if (i < 3) 
+            generateAliveNeighboursClauses(neighborsSize, i, cnf, cellIndex, neighbors);
         i++;
     }
 
@@ -467,13 +526,18 @@ void buildPastTable(table_t* t0, table_t* t1)
             if (t1->table[i][j].status == ALIVE)
             {
                 // Generate all the possible combinations of neighbors that could have generated the cell
-                staysAliveCNF(cnf, neighbors, neighborsSize);
+                
+                //staysAliveCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
+                //isBornCNF(cnf, -t1->table[i][j].index, neighbors, neighborsSize);
             }
 
             else
             {
                 // Generate all the possible combinations of neighbors that could have generated the cell
-                //staysDeadCNF(cnf, neighbors, neighborsSize);
+
+                staysDeadCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
+                //underPopulationCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
+                //overPopulationCNF(cnf, t1->table[i][j].index, neighbors, neighborsSize);
             }
         }
     }
