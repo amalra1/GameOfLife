@@ -447,6 +447,7 @@ int getNeighborsIndexes(table_t* table, int x, int y, int* neighbors)
     {
         if (y != 0)
         {
+            printf("x = %d, y = %d\n", x, y);
             neighbors[neighborsIndex] = table->table[x - 1][y - 1].index;
             neighborsIndex++;
         }
