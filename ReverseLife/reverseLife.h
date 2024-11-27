@@ -44,6 +44,9 @@ void writeCNFToFile(const char* filename, const char* cnf, int variablesNum);
 // Checks if a Cell is alive or dead and construct the CNF file 'cnf.in' for the solver
 void buildPastTable(table_t* t0, table_t* t1);
 
+// Gets result from 'cnf.out' file and fill t0 with it
+int fillPastTable(table_t* t);
+
 // Destroys table and frees memory
 void destroyTable(table_t* t);
 

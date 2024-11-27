@@ -37,32 +37,13 @@ void setInitialState(table_t* t, int** initialState)
 
 void printTable(table_t* t)
 {
-    printf("\n");
+    printf("%d %d\n", t->lines, t->columns);
 
-    // Upper line border
-    printf("x");
-    for (int i = 0; i < t->columns - 1; i++)
-        printf("----");
-    printf("---x\n");
-
-    // Table lines
     for (int i = 0; i < t->lines; i++)
     {
-        printf("|");
         for (int j = 0; j < t->columns; j++)
-        {
-            if (t->table[i][j].status == ALIVE)
-                printf(" O |");
-            else
-                printf("   |");
-        }
-        printf("\n");
-
-        // Lower line border
-        printf("x");
-            for (int i = 0; i < t->columns - 1; i++)
-                printf("----");
-        printf("---x\n");
+            printf("%d ", t->table[i][j].status);
+        printf("\n");    
     }
 }
 
@@ -519,7 +500,6 @@ int getNeighborsIndexes(table_t* table, int x, int y, int* neighbors)
 void buildPastTable(table_t* t0, table_t* t1)
 {
     int neighbors[8], neighborsSize = 0;
-    char clause[64];
     char cnf[MAX_CLAUSES];
 
     for (int i = 0; i < t1->lines; i++)
@@ -551,6 +531,52 @@ void buildPastTable(table_t* t0, table_t* t1)
 
     // Write to the file
     writeCNFToFile("cnf.in", cnf, t1->lines * t1->columns);
+}
+
+int fillPastTable(table_t* t) 
+{
+    int cellIndex;
+
+    FILE* file = fopen("cnf.out", "r");
+    if (!file) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    char line[1024];
+
+    // Skip the SAT line
+    fgets(line, sizeof(line), file);
+
+    if (!strcmp(line, "UNSAT"))
+        return 0;
+
+    fgets(line, sizeof(line), file);
+
+    char* token = strtok(line, " ");
+    while (token != NULL) 
+    {
+        cellIndex = atoi(token);
+
+        if (cellIndex != 0)
+        { 
+            int absIndex = abs(cellIndex) - 1;
+            int row = absIndex / t->columns; 
+            int col = absIndex % t->columns; 
+
+            if (cellIndex > 0) 
+                t->table[row][col].status = ALIVE; 
+            else 
+                t->table[row][col].status = DEAD;
+        }
+
+        token = strtok(NULL, " ");
+    }
+
+    fclose(file);
+
+    return 1;
 }
 
 void destroyTable(table_t* t) 

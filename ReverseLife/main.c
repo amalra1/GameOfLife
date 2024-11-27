@@ -22,16 +22,22 @@ int main()
             scanf("%d", &presentState[i][j]);
 
     setInitialState(&t1, presentState);
-    //setInitialState(&t0, presentState);
 
-    // Testing for a specific cell
     buildPastTable(&t0, &t1);
 
-    printTable(&t1);
-    printTable(&t0);
+    // Execute minisat SAT Solver
+    system("minisat cnf.in cnf.out");
+
+    // Gets result from 'cnf.out' and fills t0
+
+    if (fillPastTable(&t0))
+        printTable(&t0);
+    else
+        printf("No past table found. [UNSAT]\n");
 
     // Frees
     destroyTable(&t1);
+    destroyTable(&t0);
     for (int i = 0; i < lines; i++)
         free(presentState[i]);
     free(presentState);
