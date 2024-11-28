@@ -28,6 +28,11 @@ int main()
     // Execute minisat SAT Solver
     system("minisat cnf.in cnf.out");
 
+    // Deletes cnf.in
+    fclose(fopen("cnf.in", "w"));
+    fclose(fopen("cnf.temp", "w"));
+    fclose(fopen("cnf.header", "w"));
+
     // Gets result from 'cnf.out' and fills t0
 
     if (fillPastTable(&t0))

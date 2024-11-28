@@ -329,16 +329,15 @@ void writeHeader(const char* filename, int variablesNum, int numClauses)
 
 void writeToTemp(const char* filename, const char* cnf) 
 {
-    FILE* file = fopen(filename, "w");
+    FILE* file = fopen(filename, "a");
     if (!file) 
     {
         perror("Failed to open file");
         exit(EXIT_FAILURE);
     }
 
-    // Write CNF constraints
+    fseek(file, 0, SEEK_END);
     fprintf(file, "%s", cnf);
-
     fclose(file);
 }
 
@@ -401,7 +400,7 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
         if (hasAlive(aliveNum, combination, combinationSize)) 
         {
             memset(clause, 0, sizeof(clause));
-            clausulas_total++;
+            // clausulas_total++;
             if (cellIndex != 0)
             {
                 char cellIndexString[4];
@@ -419,10 +418,8 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
             }
 
             strcat(clause, "0\n");
-            strcat(cnf, clause);
+            strcpy(cnf, clause);
             writeToTemp("cnf.temp", cnf);
-            cnf = (char*)malloc(MAX_CLAUSES * 256 * sizeof(char));
-            
         }
     }
 }
