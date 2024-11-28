@@ -34,11 +34,14 @@ int main()
     fclose(fopen("cnf.header", "w"));
 
     // Gets result from 'cnf.out' and fills t0
-
     if (fillPastTable(&t0))
         printTable(&t0);
     else
         printf("No past table found. [UNSAT]\n");
+
+    // For validation
+    moveToNextState(&t0);
+    logTable(&t0, "pastTable.txt");
 
     // Frees
     destroyTable(&t1);
