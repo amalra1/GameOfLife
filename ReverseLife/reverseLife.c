@@ -49,6 +49,28 @@ void printTable(table_t* t)
     }
 }
 
+void logTable(table_t* t, char* filename)
+{
+    FILE* log = fopen(filename, "w");
+
+    fprintf(log, "%d %d\n", t->lines, t->columns);
+
+    for (int i = 0; i < t->lines; i++)
+    {
+        for (int j = 0; j < t->columns; j++)
+        {
+            fprintf(log, "%d", t->table[i][j].status);
+
+            if (j != t->columns - 1)
+                fprintf(log, " ");
+        }
+            
+        fprintf(log, "\n");    
+    }
+
+    fclose(log);
+}
+
 // Checks if a living cell is in a normal state, returns 1 if normal and 0 otherwise
 int normality(table_t* t, int line, int column)
 {
@@ -411,7 +433,7 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
 
             for (int j = 0; j < combinationSize; ++j) 
             {
-                char idx[4];
+                char idx[16];
                 snprintf(idx, sizeof(idx), "%d", -combination[j]);
                 strcat(clause, idx);
                 strcat(clause, " ");
