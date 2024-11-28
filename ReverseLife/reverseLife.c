@@ -598,7 +598,7 @@ void buildPastTable(table_t* t0, table_t* t1)
 int fillPastTable(table_t* t) 
 {
     int cellIndex;
-
+    int count = 0;
     FILE* file = fopen("cnf.out", "r");
     if (!file) 
     {
@@ -632,7 +632,6 @@ int fillPastTable(table_t* t)
             else 
                 t->table[row][col].status = DEAD;
         }
-
         token = strtok(NULL, " ");
     }
 
