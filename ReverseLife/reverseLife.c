@@ -4,6 +4,8 @@
     PEDRO AMARAL CHAPELIN
 */
 
+int clausulas_total = 0;
+
 table_t initializeTable(int lines, int columns)
 {
     table_t t;
@@ -288,8 +290,44 @@ int countClauses(const char* cnf)
     return count;
 }
 
-// Function to write CNF to file
-void writeCNFToFile(const char* filename, const char* cnf, int variablesNum) 
+int countClausesFile(const char* filename) 
+{
+    FILE* file = fopen(filename, "r");
+    if (!file) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    int count = 0;
+    char line[1024];
+
+    while (fgets(line, sizeof(line), file)) 
+    {
+        count++;
+    }
+
+    fclose(file);
+
+    return count;
+}
+
+
+void writeHeader(const char* filename, int variablesNum, int numClauses) 
+{
+    FILE* file = fopen(filename, "w");
+    if (!file) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+    
+    fprintf(file, "p cnf %d %d\n", variablesNum, countClausesFile("cnf.temp"));
+
+    fclose(file);
+}
+
+void writeToTemp(const char* filename, const char* cnf) 
 {
     FILE* file = fopen(filename, "w");
     if (!file) 
@@ -298,16 +336,39 @@ void writeCNFToFile(const char* filename, const char* cnf, int variablesNum)
         exit(EXIT_FAILURE);
     }
 
-    // Count the number of variables and clauses
-    int numClauses = countClauses(cnf);
-
-    // Write CNF header
-    fprintf(file, "p cnf %d %d\n", variablesNum, numClauses);
-
     // Write CNF constraints
     fprintf(file, "%s", cnf);
 
     fclose(file);
+}
+
+void joinFiles(const char* header, const char* temp, const char* output) 
+{
+    FILE* f1 = fopen(header, "r");
+    FILE* f2 = fopen(temp, "r");
+    FILE* f3 = fopen(output, "w");
+
+    if (!f1 || !f2 || !f3) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    char line[1024];
+
+    while (fgets(line, sizeof(line), f1)) 
+    {
+        fprintf(f3, "%s", line);
+    }
+
+    while (fgets(line, sizeof(line), f2)) 
+    {
+        fprintf(f3, "%s", line);
+    }
+
+    fclose(f1);
+    fclose(f2);
+    fclose(f3);
 }
 
 // Função que verifica se uma combinação tem exatamente 'aliveNum' vizinhos vivos
@@ -340,7 +401,7 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
         if (hasAlive(aliveNum, combination, combinationSize)) 
         {
             memset(clause, 0, sizeof(clause));
-
+            clausulas_total++;
             if (cellIndex != 0)
             {
                 char cellIndexString[4];
@@ -359,6 +420,9 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
 
             strcat(clause, "0\n");
             strcat(cnf, clause);
+            writeToTemp("cnf.temp", cnf);
+            cnf = (char*)malloc(MAX_CLAUSES * 256 * sizeof(char));
+            
         }
     }
 }
@@ -447,7 +511,6 @@ int getNeighborsIndexes(table_t* table, int x, int y, int* neighbors)
     {
         if (y != 0)
         {
-            printf("x = %d, y = %d\n", x, y);
             neighbors[neighborsIndex] = table->table[x - 1][y - 1].index;
             neighborsIndex++;
         }
@@ -501,7 +564,7 @@ int getNeighborsIndexes(table_t* table, int x, int y, int* neighbors)
 void buildPastTable(table_t* t0, table_t* t1)
 {
     int neighbors[8], neighborsSize = 0;
-    char cnf[MAX_CLAUSES];
+    char* cnf = (char*)malloc(MAX_CLAUSES * 256 * sizeof(char));
 
     for (int i = 0; i < t1->lines; i++)
     {
@@ -531,7 +594,8 @@ void buildPastTable(table_t* t0, table_t* t1)
     }
 
     // Write to the file
-    writeCNFToFile("cnf.in", cnf, t1->lines * t1->columns);
+    writeHeader("cnf.header", t1->lines * t1->columns, clausulas_total); 
+    joinFiles("cnf.header", "cnf.temp", "cnf.in");
 }
 
 int fillPastTable(table_t* t) 
