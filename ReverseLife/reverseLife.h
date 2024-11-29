@@ -38,6 +38,9 @@ void moveToNextState(table_t* t);
 // Prints table
 void printTable(table_t* t);
 
+// Prints table in a file
+void logTable(table_t* t, char* filename);
+
 // Writes the cnf obtainerd on a file
 void writeCNFToFile(const char* filename, const char* cnf, int variablesNum);
 

@@ -28,12 +28,20 @@ int main()
     // Execute minisat SAT Solver
     system("minisat cnf.in cnf.out");
 
-    // Gets result from 'cnf.out' and fills t0
+    // Deletes cnf.in
+    fclose(fopen("cnf.in", "w"));
+    fclose(fopen("cnf.temp", "w"));
+    fclose(fopen("cnf.header", "w"));
 
+    // Gets result from 'cnf.out' and fills t0
     if (fillPastTable(&t0))
         printTable(&t0);
     else
         printf("No past table found. [UNSAT]\n");
+
+    // For validation
+    moveToNextState(&t0);
+    logTable(&t0, "pastTable.txt");
 
     // Frees
     destroyTable(&t1);
