@@ -628,7 +628,8 @@ int fillPastTable(table_t* t)
         exit(EXIT_FAILURE);
     }
 
-    char line[1024];
+    // To store the line from the cnf.out
+    char line[8024];
 
     // Skip the SAT line
     fgets(line, sizeof(line), file);
