@@ -628,7 +628,7 @@ int fillPastTable(table_t* t)
         exit(EXIT_FAILURE);
     }
 
-    char line[1024];
+    char line[8024];
 
     // Skip the SAT line
     fgets(line, sizeof(line), file);
