@@ -37,6 +37,18 @@ void setInitialState(table_t* t, int** initialState)
             t->table[i][j].status = initialState[i][j];
 }
 
+int aliveCells(table_t* t)
+{
+    int count = 0;
+
+    for (int i = 0; i < t->lines; i++)
+        for (int j = 0; j < t->columns; j++)
+            if (t->table[i][j].status == ALIVE)
+                count++;
+
+    return count;
+}
+
 void printTable(table_t* t)
 {
     printf("%d %d\n", t->lines, t->columns);
@@ -325,9 +337,7 @@ int countClausesFile(const char* filename)
     char line[1024];
 
     while (fgets(line, sizeof(line), file)) 
-    {
         count++;
-    }
 
     fclose(file);
 
@@ -378,14 +388,10 @@ void joinFiles(const char* header, const char* temp, const char* output)
     char line[1024];
 
     while (fgets(line, sizeof(line), f1)) 
-    {
         fprintf(f3, "%s", line);
-    }
 
     while (fgets(line, sizeof(line), f2)) 
-    {
         fprintf(f3, "%s", line);
-    }
 
     fclose(f1);
     fclose(f2);
@@ -617,10 +623,57 @@ void buildPastTable(table_t* t0, table_t* t1)
     joinFiles("cnf.header", "cnf.temp", "cnf.in");
 }
 
+void addTableConstraint(char* filename, table_t* t0)
+{
+    FILE* file = fopen(filename, "a");
+    if (!file) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < t0->lines; i++)
+    {
+        for (int j = 0; j < t0->columns; j++)
+        {
+            // Inverted status on the cnf file
+            if (t0->table[i][j].status == ALIVE)
+                fprintf(file, "%d ", -t0->table[i][j].index);
+            else
+                fprintf(file, "%d ", t0->table[i][j].index);
+        }
+    }
+
+    fprintf(file, "0\n");
+    fclose(file);
+}
+
+int getClausesNumber(char* filename)
+{
+    FILE* file = fopen(filename, "r");
+    if (!file) 
+    {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    char line[32];
+    fgets(line, sizeof(line), file);
+
+    char* token = strtok(line, " ");
+    for (int i = 0; i < 3; i++)
+    {
+        token = strtok(NULL, " ");
+    }
+
+    fclose(file);
+
+    return atoi(token);
+}
+
 int fillPastTable(table_t* t) 
 {
     int cellIndex;
-    int count = 0;
     FILE* file = fopen("cnf.out", "r");
     if (!file) 
     {
