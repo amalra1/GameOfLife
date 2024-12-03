@@ -56,6 +56,9 @@ void getDifferentSolution(table_t* t, int* t0AliveNum)
     // Run minisat again
     system("./mergesat cnf.in cnf.out");
     fillPastTable(t);
+    // For validation
+    printTable(t);
+    printf("Alive cells: %d\n", aliveCells(t));
     logTable(t, "pastTable2.txt");
 }
 
