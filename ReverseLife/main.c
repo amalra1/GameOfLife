@@ -2,6 +2,8 @@
 #include "reverseLife.h"
 #include <core/Solver.h>
 
+#define MAX_TRIES 0
+
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
 {
     FILE* file = fopen(filename, "w");
@@ -45,6 +47,7 @@ void copyToTemp(const char *sourceFile, const char *destFile)
 void getDifferentSolution(table_t* t, int* t0AliveNum)
 {
     int clausesNumber;
+	int aliveNum;
 
     // Writes new constraint into the cnf.in file to get a different solution
     clausesNumber = getClausesNumber("cnf.in");
@@ -58,7 +61,9 @@ void getDifferentSolution(table_t* t, int* t0AliveNum)
     fillPastTable(t);
     // For validation
     printTable(t);
-    printf("Alive cells: %d\n", aliveCells(t));
+	aliveNum = aliveCells(t);
+    printf("Alive cells: %d\n", aliveNum);
+	moveToNextState(t);
     logTable(t, "pastTable2.txt");
 }
 
@@ -98,13 +103,15 @@ int main()
         // For validation
         printTable(&t0);
         printf("Alive cells: %d\n", t0AliveNum);
-        //moveToNextState(&t0);
+        moveToNextState(&t0);
         logTable(&t0, "pastTable.txt");
     }
     else
         printf("No past table found. [UNSAT]\n");
 
-    getDifferentSolution(&t0, &t0AliveNum);
+
+	for (int i = 0; i < MAX_TRIES; i++)
+		getDifferentSolution(&t0, &t0AliveNum);
 
     // Deletes the created inputs
     fclose(fopen("cnf.in", "w"));
