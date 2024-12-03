@@ -2,7 +2,7 @@
 #include "reverseLife.h"
 #include <core/Solver.h>
 
-#define MAX_TRIES 0
+#define MAX_TRIES 10
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
 {
@@ -44,11 +44,11 @@ void copyToTemp(const char *sourceFile, const char *destFile)
     fclose(dest);
 }
 
-void getDifferentSolution(table_t* t, int* t0AliveNum)
+void getDifferentSolution(table_t* t, int* t0AliveNum, int* minAliveNum)
 {
     int clausesNumber;
 	int aliveNum;
-
+    
     // Writes new constraint into the cnf.in file to get a different solution
     clausesNumber = getClausesNumber("cnf.in");
     writeNewHeader("cnf.header", t->lines * t->columns, clausesNumber + 1);
@@ -57,11 +57,16 @@ void getDifferentSolution(table_t* t, int* t0AliveNum)
     addTableConstraint("cnf.in", t);
 
     // Run minisat again
-    system("./mergesat cnf.in cnf.out");
+    system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
     fillPastTable(t);
     // For validation
     printTable(t);
 	aliveNum = aliveCells(t);
+
+    if (aliveNum < *minAliveNum)
+        *minAliveNum = aliveNum;
+        
+
     printf("Alive cells: %d\n", aliveNum);
 	moveToNextState(t);
     logTable(t, "pastTable2.txt");
@@ -74,6 +79,7 @@ int main()
 
     scanf("%d", &lines);
     scanf("%d", &columns);
+    int minAliveNum = lines * columns;
 
     table_t t1 = initializeTable(lines, columns);
     table_t t0 = initializeTable(lines, columns);
@@ -94,7 +100,7 @@ int main()
     buildPastTable(&t0, &t1);
 
     // Execute minisat SAT Solver
-    system("./mergesat cnf.in cnf.out");
+    system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
 
     if (fillPastTable(&t0))
     {
@@ -111,7 +117,9 @@ int main()
 
 
 	for (int i = 0; i < MAX_TRIES; i++)
-		getDifferentSolution(&t0, &t0AliveNum);
+		getDifferentSolution(&t0, &t0AliveNum, &minAliveNum);
+
+    printf("Minimum alive cells found: %d\n", minAliveNum);
 
     // Deletes the created inputs
     fclose(fopen("cnf.in", "w"));
