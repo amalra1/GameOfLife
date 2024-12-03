@@ -2,65 +2,82 @@
 #include "reverseLife.h"
 #include <core/Solver.h>
 
-void writeNewHeader(char* filename, int numVariables, int clausesNumber)
-{
-    FILE* file = fopen(filename, "w");
-    if (!file) 
-    {
-        perror("Failed to open file");
-        exit(EXIT_FAILURE);
+// Função para contar o número de variáveis verdadeiras no modelo
+int count_ones(int** table, int rows, int cols) {
+    int count = 0;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (table[i][j] == 1) {
+                count++;
+            }
+        }
     }
-    
-    fprintf(file, "p cnf %d %d\n", numVariables, clausesNumber);
+    return count;
+}
 
+// Função para adicionar a restrição de que a tabela t deve ser igual a table
+void addNegatedSolution(char* filename, table_t* t) {
+    FILE* file = fopen(filename, "a");
+    for (int i = 0; i < t->lines; i++) {
+        for (int j = 0; j < t->columns; j++) {
+            if (t->table[i][j].status == ALIVE) {
+                fprintf(file, "-%d 0\n", t->table[i][j].index);
+            } else {
+                fprintf(file, "%d 0\n", t->table[i][j].index);
+            }
+        }
+    }
     fclose(file);
 }
 
-void copyToTemp(const char *sourceFile, const char *destFile) 
-{
-    FILE *source = fopen(sourceFile, "r");
-    if (!source) 
-    {
-        perror("Failed to open source file");
-        exit(EXIT_FAILURE);
+void getMinimalAliveCells(table_t* t, int* t0AliveNum) {
+    int clausesNumber, minAliveCells = t->lines * t->columns;
+    int currentAliveCells;
+
+    while (1) {
+        // Conta as cláusulas antes de adicionar novas
+        clausesNumber = getClausesNumber("cnf.in");
+
+        // Adiciona novas cláusulas ao arquivo CNF
+        addTableConstraint("cnf.in", t);
+        addNegatedSolution("cnf.in", t);
+
+        // Atualiza o cabeçalho do arquivo com o número correto de cláusulas
+        writeHeader("cnf.header", t->lines * t->columns, clausesNumber + 1);
+        writeToTemp("cnf.in", "cnf.temp");
+        joinFiles("cnf.header", "cnf.temp", "cnf.in");
+
+        // Executa o SAT Solver
+        system("./mergesat cnf.in cnf.out");
+
+        if (!fillPastTable(t)) {
+            printf("Solução mínima encontrada com %d células vivas.\n", minAliveCells);
+            break;
+        }
+
+        // Conta as células vivas na tabela atual
+        currentAliveCells = aliveCells(t);
+
+        printf("Current Alive Cells: %d, Min Alive Cells: %d\n", currentAliveCells, minAliveCells);
+
+        // Check for progress
+        if (currentAliveCells >= minAliveCells) {
+            printf("No further minimization possible. Exiting.\n");
+            break;
+        }
+
+        // Atualiza o mínimo encontrado
+        minAliveCells = currentAliveCells;
+
+        // Adiciona restrição para bloquear essa solução
+        addNegatedSolution("cnf.in", t);
     }
 
-    FILE *dest = fopen(destFile, "w");
-    if (!dest) 
-    {
-        perror("Failed to open destination file");
-        fclose(source);
-        exit(EXIT_FAILURE);
-    }
-
-    char line[1024];
-    fgets(line, sizeof(line), source); // Skips first line
-    while (fgets(line, sizeof(line), source))
-        fputs(line, dest);
-
-    fclose(source);
-    fclose(dest);
+    *t0AliveNum = minAliveCells;
 }
 
-void getDifferentSolution(table_t* t, int* t0AliveNum)
-{
-    int clausesNumber;
 
-    // Writes new constraint into the cnf.in file to get a different solution
-    clausesNumber = getClausesNumber("cnf.in");
-    writeNewHeader("cnf.header", t->lines * t->columns, clausesNumber + 1);
-    copyToTemp("cnf.in", "cnf.temp");
-    joinFiles("cnf.header", "cnf.temp", "cnf.in");
-    addTableConstraint("cnf.in", t);
-
-    // Run minisat again
-    system("./mergesat cnf.in cnf.out");
-    fillPastTable(t);
-    logTable(t, "pastTable2.txt");
-}
-
-int main()
-{
+int main() {
     int t1AliveNum, t0AliveNum = 0, previousT0AliveNum = 0;
     int lines, columns;
 
@@ -75,7 +92,7 @@ int main()
     for (int i = 0; i < lines; i++)
         presentState[i] = (int*)malloc(columns * sizeof(int));
 
-    // Takes the presentState matrix from the file
+    // Recebe o estado atual da matriz
     for (int i = 0; i < lines; i++)
         for (int j = 0; j < columns; j++)
             scanf("%d", &presentState[i][j]);
@@ -85,30 +102,30 @@ int main()
 
     buildPastTable(&t0, &t1);
 
-    // Execute minisat SAT Solver
+    // Executa o SAT Solver
     system("./mergesat cnf.in cnf.out");
 
-    if (fillPastTable(&t0))
-    {
+    if (fillPastTable(&t0)) {
         t0AliveNum = aliveCells(&t0);
 
-        // For validation
+        // Validação e log
         printTable(&t0);
-        printf("Alive cells: %d\n", t0AliveNum);
-        //moveToNextState(&t0);
+        printf("Células vivas: %d\n", t0AliveNum);
+        moveToNextState(&t0);
         logTable(&t0, "pastTable.txt");
+    } else {
+        printf("Nenhuma tabela passada encontrada. [UNSAT]\n");
     }
-    else
-        printf("No past table found. [UNSAT]\n");
 
-    getDifferentSolution(&t0, &t0AliveNum);
+    // Minimiza células vivas
+    getMinimalAliveCells(&t0, &t0AliveNum);
 
-    // Deletes the created inputs
-    fclose(fopen("cnf.in", "w"));
+    // Limpa arquivos temporários
+    // fclose(fopen("cnf.in", "w"));
     fclose(fopen("cnf.temp", "w"));
     fclose(fopen("cnf.header", "w"));
 
-    // Frees
+    // Liberação de memória
     destroyTable(&t1);
     destroyTable(&t0);
     for (int i = 0; i < lines; i++)
