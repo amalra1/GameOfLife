@@ -2,7 +2,7 @@
 #include "reverseLife.h"
 #include <core/Solver.h>
 
-#define MAX_TRIES 10
+#define MAX_TRIES 0
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
 {
@@ -47,7 +47,7 @@ void copyToTemp(const char *sourceFile, const char *destFile)
 void getDifferentSolution(table_t* t, int* t0AliveNum, int* minAliveNum)
 {
     int clausesNumber;
-	int aliveNum;
+    int aliveNum;
     
     // Writes new constraint into the cnf.in file to get a different solution
     clausesNumber = getClausesNumber("cnf.in");
@@ -58,17 +58,18 @@ void getDifferentSolution(table_t* t, int* t0AliveNum, int* minAliveNum)
 
     // Run minisat again
     system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
+    //system("./mergesat cnf.in cnf.out");
     fillPastTable(t);
     // For validation
     printTable(t);
-	aliveNum = aliveCells(t);
+    aliveNum = aliveCells(t);
 
     if (aliveNum < *minAliveNum)
         *minAliveNum = aliveNum;
         
 
     printf("Alive cells: %d\n", aliveNum);
-	moveToNextState(t);
+    //moveToNextState(t);
     logTable(t, "pastTable2.txt");
 }
 
@@ -99,25 +100,31 @@ int main()
 
     buildPastTable(&t0, &t1);
 
-    // Execute minisat SAT Solver
-    system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
+    // 24X24 (input20.txt)
+    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out");
+
+    // 14X14 (input10.txt)
+    //system("./mergesat -mem-lim=500 -cpu-lim=300 -rnd-init=3 cnf.in10 cnf.out");
+
+    //system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
 
     if (fillPastTable(&t0))
     {
         t0AliveNum = aliveCells(&t0);
+	minAliveNum = t0AliveNum;
 
         // For validation
         printTable(&t0);
         printf("Alive cells: %d\n", t0AliveNum);
-        moveToNextState(&t0);
+        //moveToNextState(&t0);
         logTable(&t0, "pastTable.txt");
     }
     else
         printf("No past table found. [UNSAT]\n");
 
 
-	for (int i = 0; i < MAX_TRIES; i++)
-		getDifferentSolution(&t0, &t0AliveNum, &minAliveNum);
+    for (int i = 0; i < MAX_TRIES; i++)
+	getDifferentSolution(&t0, &t0AliveNum, &minAliveNum);
 
     printf("Minimum alive cells found: %d\n", minAliveNum);
 
