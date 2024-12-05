@@ -2,7 +2,7 @@
 #include "reverseLife.h"
 #include <core/Solver.h>
 
-#define MAX_TRIES 0
+#define MAX_TRIES 50
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
 {
@@ -44,7 +44,14 @@ void copyToTemp(const char *sourceFile, const char *destFile)
     fclose(dest);
 }
 
-void getDifferentSolution(table_t* t, int* t0AliveNum, int* minAliveNum)
+void switchMinTable(table_t* t, table_t* minT)
+{
+    for (int i = 0; i < t->lines; i++)
+        for (int j = 0; j < t->columns; j++)
+            minT->table[i][j].status = t->table[i][j].status;
+}
+
+void getDifferentSolution(table_t* t, table_t* minT, int* t0AliveNum, int* minAliveNum)
 {
     int clausesNumber;
     int aliveNum;
@@ -64,8 +71,10 @@ void getDifferentSolution(table_t* t, int* t0AliveNum, int* minAliveNum)
     printTable(t);
     aliveNum = aliveCells(t);
 
-    if (aliveNum < *minAliveNum)
+    if (aliveNum <= *minAliveNum){
         *minAliveNum = aliveNum;
+        switchMinTable(t, minT);
+    }
         
 
     printf("Alive cells: %d\n", aliveNum);
@@ -84,7 +93,8 @@ int main()
 
     table_t t1 = initializeTable(lines, columns);
     table_t t0 = initializeTable(lines, columns);
-
+    table_t minTable = initializeTable(lines, columns);
+    
     // Mallocs presentState matrix
     int** presentState = (int**)malloc(lines * sizeof(int*));
     for (int i = 0; i < lines; i++)
@@ -101,7 +111,7 @@ int main()
     buildPastTable(&t0, &t1);
 
     // 24X24 (input20.txt)
-    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out");
+    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
 
     // 14X14 (input10.txt)
     //system("./mergesat -mem-lim=500 -cpu-lim=300 -rnd-init=3 cnf.in10 cnf.out");
@@ -111,22 +121,25 @@ int main()
     if (fillPastTable(&t0))
     {
         t0AliveNum = aliveCells(&t0);
-	minAliveNum = t0AliveNum;
+	    minAliveNum = t0AliveNum;
 
         // For validation
         printTable(&t0);
         printf("Alive cells: %d\n", t0AliveNum);
-        //moveToNextState(&t0);
+        // moveToNextState(&t0);
         logTable(&t0, "pastTable.txt");
     }
     else
         printf("No past table found. [UNSAT]\n");
 
+    switchMinTable(&t0, &minTable);
 
     for (int i = 0; i < MAX_TRIES; i++)
-	getDifferentSolution(&t0, &t0AliveNum, &minAliveNum);
+	    getDifferentSolution(&t0, &minTable, &t0AliveNum, &minAliveNum);
 
     printf("Minimum alive cells found: %d\n", minAliveNum);
+    printf("Minimun table:\n");
+    printTable(&minTable);
 
     // Deletes the created inputs
     fclose(fopen("cnf.in", "w"));
