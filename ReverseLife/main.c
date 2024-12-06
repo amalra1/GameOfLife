@@ -1,9 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 #include "reverseLife.h"
 #include <core/Solver.h>
 
 // Coin flips
-#define MAX_TRIES 50
+#define MAX_TRIES 200
+#define TIME_LIMIT 270 // 4 minutes and 30 seconds in seconds
+
+volatile int timeout = 0; // Flag to indicate timeout
+
+void handle_timeout(int sig) {
+    timeout = 1;
+    // printf("\n[Timeout] 4 minutes and 30 seconds.\n");
+}
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
 {
@@ -65,27 +76,25 @@ void getDifferentSolution(table_t* t, table_t* minT, int* t0AliveNum, int* minAl
     addTableConstraint("cnf.in", t);
 
     // Run minisat again
-    system("./mergesat -mem-lim=8000 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
-    //system("./mergesat cnf.in cnf.out");
+    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
     fillPastTable(t);
-    // For validation
-    // printTable(t);
     aliveNum = aliveCells(t);
 
     if (aliveNum <= *minAliveNum){
         *minAliveNum = aliveNum;
         switchMinTable(t, minT);
     }
-        
 
-    // printf("Alive cells: %d\n", aliveNum);
-    //moveToNextState(t);
     logTable(t, "pastTable2.txt");
 }
 
 int main()
 {
-    int t1AliveNum, t0AliveNum = 0, previousT0AliveNum = 0;
+    // Register signal handler for timeout
+    signal(SIGALRM, handle_timeout);
+    alarm(TIME_LIMIT); // Set timeout
+
+    int t1AliveNum, t0AliveNum = 0;
     int lines, columns;
 
     scanf("%d", &lines);
@@ -111,46 +120,39 @@ int main()
 
     buildPastTable(&t0, &t1);
 
-    // 24X24 (input20.txt)
-    system("./mergesat -mem-lim=8000 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
-
-    // 14X14 (input10.txt)
-    //system("./mergesat -mem-lim=500 -cpu-lim=300 -rnd-init=3 cnf.in10 cnf.out");
-
-    //system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
+    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
 
     if (fillPastTable(&t0))
     {
         t0AliveNum = aliveCells(&t0);
-	    minAliveNum = t0AliveNum;
-
-        // For validation
-        // printTable(&t0);
-        // printf("Alive cells: %d\n", t0AliveNum);
-        // moveToNextState(&t0);
+        minAliveNum = t0AliveNum;
         logTable(&t0, "pastTable.txt");
     }
     else
+    {
         printf("No past table found. [UNSAT]\n");
+    }
 
     switchMinTable(&t0, &minTable);
 
-    for (int i = 0; i < MAX_TRIES; i++)
-	    getDifferentSolution(&t0, &minTable, &t0AliveNum, &minAliveNum);
+    for (int i = 0; i < MAX_TRIES && !timeout; i++) {
+        getDifferentSolution(&t0, &minTable, &t0AliveNum, &minAliveNum);
+    }
 
-    printf("Minimum alive cells found: %d\n", minAliveNum);
-    printf("Minimun table:\n");
+    // Print the minimum table found
+    // printf("Minimum alive cells found: %d\n", minAliveNum);
+    // printf("Minimum table:\n");
     printTable(&minTable);
 
-    moveToNextState(&minTable);
-    logTable(&minTable, "pastTable.txt");
+    // Transition to the next state and log the minimum table
+    // moveToNextState(&minTable);
+    // logTable(&minTable, "pastTable.txt");
     
-    // Deletes the created inputs
+    // Cleanup
     fclose(fopen("cnf.in", "w"));
     fclose(fopen("cnf.temp", "w"));
     fclose(fopen("cnf.header", "w"));
 
-    // Frees
     destroyTable(&t1);
     destroyTable(&t0);
     for (int i = 0; i < lines; i++)
