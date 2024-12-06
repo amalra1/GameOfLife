@@ -2,6 +2,7 @@
 #include "reverseLife.h"
 #include <core/Solver.h>
 
+// Coin flips
 #define MAX_TRIES 50
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
@@ -64,11 +65,11 @@ void getDifferentSolution(table_t* t, table_t* minT, int* t0AliveNum, int* minAl
     addTableConstraint("cnf.in", t);
 
     // Run minisat again
-    system("./mergesat cnf.in cnf.out > /dev/null 2>&1");
+    system("./mergesat -mem-lim=8000 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
     //system("./mergesat cnf.in cnf.out");
     fillPastTable(t);
     // For validation
-    printTable(t);
+    // printTable(t);
     aliveNum = aliveCells(t);
 
     if (aliveNum <= *minAliveNum){
@@ -77,7 +78,7 @@ void getDifferentSolution(table_t* t, table_t* minT, int* t0AliveNum, int* minAl
     }
         
 
-    printf("Alive cells: %d\n", aliveNum);
+    // printf("Alive cells: %d\n", aliveNum);
     //moveToNextState(t);
     logTable(t, "pastTable2.txt");
 }
@@ -111,7 +112,7 @@ int main()
     buildPastTable(&t0, &t1);
 
     // 24X24 (input20.txt)
-    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
+    system("./mergesat -mem-lim=8000 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
 
     // 14X14 (input10.txt)
     //system("./mergesat -mem-lim=500 -cpu-lim=300 -rnd-init=3 cnf.in10 cnf.out");
@@ -124,8 +125,8 @@ int main()
 	    minAliveNum = t0AliveNum;
 
         // For validation
-        printTable(&t0);
-        printf("Alive cells: %d\n", t0AliveNum);
+        // printTable(&t0);
+        // printf("Alive cells: %d\n", t0AliveNum);
         // moveToNextState(&t0);
         logTable(&t0, "pastTable.txt");
     }
@@ -141,6 +142,9 @@ int main()
     printf("Minimun table:\n");
     printTable(&minTable);
 
+    moveToNextState(&minTable);
+    logTable(&minTable, "pastTable.txt");
+    
     // Deletes the created inputs
     fclose(fopen("cnf.in", "w"));
     fclose(fopen("cnf.temp", "w"));
