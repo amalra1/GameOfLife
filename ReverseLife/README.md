@@ -1,3 +1,5 @@
-# Reverse Game of Life by 1 generation  
+# REVERSE GAME OF LIFE
 
-How hard can it be  
+[PT-BR]
+
+Esse trabalho consiste providenciar uma possível configuração de tabuleiro **N**x**M** será um dos tabuleiros que podem ter gerado o tabuleiro **T1**, obtido na entrada do programa. </br>
