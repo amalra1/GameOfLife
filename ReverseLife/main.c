@@ -9,13 +9,6 @@
 #define MAX_TRIES 200
 #define TIME_LIMIT 270 // 4 minutes and 30 seconds in seconds
 
-// Solver file names
-#define INPUT_FILE "cnf.in"
-#define TEMP_FILE "cnf.temp"
-#define HEADER_FILE "cnf.header"
-#define OUTPUT_FILE "cnf.out"
-#define LOG_FILE "t1.txt"
-
 volatile int timeout = 0; // Flag to indicate timeout
 
 void handle_timeout(int sig) 
