@@ -3,7 +3,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include "reverseLife.h"
-#include <core/Solver.h>
+//#include <core/Solver.h>
 
 // Coin flips
 #define MAX_TRIES 200
@@ -11,9 +11,10 @@
 
 volatile int timeout = 0; // Flag to indicate timeout
 
-void handle_timeout(int sig) {
+void handle_timeout(int sig) 
+{
     timeout = 1;
-    // printf("\n[Timeout] 4 minutes and 30 seconds.\n");
+    printf("\nTime exceeded 4 minutes and 30 seconds.\n");
 }
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
@@ -77,15 +78,16 @@ void getDifferentSolution(table_t* t, table_t* minT, int* t0AliveNum, int* minAl
 
     // Run minisat again
     system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
+    //system("minisat cnf.in cnf.out");
+
     fillPastTable(t);
     aliveNum = aliveCells(t);
 
-    if (aliveNum <= *minAliveNum){
+    if (aliveNum <= *minAliveNum)
+    {
         *minAliveNum = aliveNum;
         switchMinTable(t, minT);
     }
-
-    logTable(t, "pastTable2.txt");
 }
 
 int main()
@@ -118,35 +120,33 @@ int main()
     setInitialState(&t1, presentState);
     t1AliveNum = aliveCells(&t1);
 
+    // Generate cnf file to generate the t0 table
     buildPastTable(&t0, &t1);
 
+    // Call the SAT Solver
     system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
+    //system("minisat cnf.in cnf.out");
 
-    if (fillPastTable(&t0))
-    {
-        t0AliveNum = aliveCells(&t0);
-        minAliveNum = t0AliveNum;
-        logTable(&t0, "pastTable.txt");
-    }
-    else
-    {
-        printf("No past table found. [UNSAT]\n");
-    }
+    // Get solution from cnf.out file and fill the table
+    fillPastTable(&t0);
+    t0AliveNum = aliveCells(&t0);
+    minAliveNum = t0AliveNum;
+    logTable(&t0, "pastTable.txt");
 
     switchMinTable(&t0, &minTable);
 
-    for (int i = 0; i < MAX_TRIES && !timeout; i++) {
+    // Get new solution adding all cells but inverted as a clause to the cnf
+    // Until MAX TRIES or Timeout max
+    for (int i = 0; i < MAX_TRIES && !timeout; i++)
         getDifferentSolution(&t0, &minTable, &t0AliveNum, &minAliveNum);
-    }
 
-    // Print the minimum table found
-    // printf("Minimum alive cells found: %d\n", minAliveNum);
-    // printf("Minimum table:\n");
+    printf("Minimum alive cells found: %d\n", minAliveNum);
+    printf("Minimum table:\n");
     printTable(&minTable);
 
-    // Transition to the next state and log the minimum table
-    // moveToNextState(&minTable);
-    // logTable(&minTable, "pastTable.txt");
+    // Log to compare with the input == Should be exactly equal
+    moveToNextState(&minTable);
+    logTable(&minTable, "pastTable.txt");
     
     // Cleanup
     fclose(fopen("cnf.in", "w"));
