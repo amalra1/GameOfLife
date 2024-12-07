@@ -354,7 +354,7 @@ void writeHeader(const char* filename, int variablesNum, int numClauses)
         exit(EXIT_FAILURE);
     }
     
-    fprintf(file, "p cnf %d %d\n", variablesNum, countClausesFile("cnf.temp"));
+    fprintf(file, "p cnf %d %d\n", variablesNum, countClausesFile(TEMP_FILE));
 
     fclose(file);
 }
@@ -399,13 +399,15 @@ void joinFiles(const char* header, const char* temp, const char* output)
 }
 
 // Função que verifica se uma combinação tem exatamente 'aliveNum' vizinhos vivos
-int hasAlive(int aliveNum, int* combination, int size) {
+int hasAlive(int aliveNum, int* combination, int size) 
+{
     int count = 0;
-    for (int i = 0; i < size; ++i) {
-        if (combination[i] > 0) {
+    for (int i = 0; i < size; ++i) 
+    {
+        if (combination[i] > 0) 
             count++;
-        }
     }
+
     return count == aliveNum;
 }
 
@@ -447,7 +449,7 @@ void generateAliveNeighboursClauses(int combinationSize, int aliveNum, char* cnf
 
             strcat(clause, "0\n");
             strcpy(cnf, clause);
-            writeToTemp("cnf.temp", cnf);
+            writeToTemp(TEMP_FILE, cnf);
         }
     }
 }
@@ -619,8 +621,8 @@ void buildPastTable(table_t* t0, table_t* t1)
     }
 
     // Write to the file
-    writeHeader("cnf.header", t1->lines * t1->columns, clausulas_total); 
-    joinFiles("cnf.header", "cnf.temp", "cnf.in");
+    writeHeader(HEADER_FILE, t1->lines * t1->columns, clausulas_total); 
+    joinFiles(HEADER_FILE, TEMP_FILE, INPUT_FILE);
 }
 
 void addTableConstraint(char* filename, table_t* t0)
@@ -674,7 +676,7 @@ int getClausesNumber(char* filename)
 int fillPastTable(table_t* t) 
 {
     int cellIndex;
-    FILE* file = fopen("cnf.out", "r");
+    FILE* file = fopen(OUTPUT_FILE, "r");
     if (!file) 
     {
         perror("Failed to open file");

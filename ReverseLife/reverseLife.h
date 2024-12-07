@@ -13,6 +13,13 @@
 #define DEAD 0
 #define MAX_CLAUSES 800000
 
+// Solver file names
+#define INPUT_FILE "cnf.in"
+#define TEMP_FILE "cnf.temp"
+#define HEADER_FILE "cnf.header"
+#define OUTPUT_FILE "cnf.out"
+#define LOG_FILE "t1.txt"
+
 typedef struct cell
 {
     int status;     // Alive or dead
@@ -59,7 +66,7 @@ void joinFiles(const char* header, const char* temp, const char* output);
 // Checks if a Cell is alive or dead and construct the CNF file 'cnf.in' for the solver
 void buildPastTable(table_t* t0, table_t* t1);
 
-// Writes constraints to not have the previos generated solution and find another one
+// Writes constraints to not have the previous generated solution and find another one
 void addTableConstraint(char* filename, table_t* t0);
 
 // Accesses the the input cnf file with the given name and returns the number of clauses of the header
