@@ -9,12 +9,32 @@
 #define MAX_TRIES 200
 #define TIME_LIMIT 270 // 4 minutes and 30 seconds in seconds
 
+// Solver file names
+#define INPUT_FILE "cnf.in"
+#define TEMP_FILE "cnf.temp"
+#define HEADER_FILE "cnf.header"
+#define OUTPUT_FILE "cnf.out"
+#define LOG_FILE "t1.txt"
+
 volatile int timeout = 0; // Flag to indicate timeout
 
 void handle_timeout(int sig) 
 {
     timeout = 1;
     printf("\nTime exceeded 4 minutes and 30 seconds.\n");
+}
+
+void runSolver() 
+{
+    char call[256];
+
+    // MERGESAT
+    snprintf(call, sizeof(call), "./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 %s %s > /dev/null 2>&1", INPUT_FILE, OUTPUT_FILE);
+
+    // MINISAT
+    //snprintf(call, sizeof(call), "minisat %s %s", INPUT_FILE, OUTPUT_FILE);
+    
+    system(call);
 }
 
 void writeNewHeader(char* filename, int numVariables, int clausesNumber)
@@ -64,30 +84,50 @@ void switchMinTable(table_t* t, table_t* minT)
             minT->table[i][j].status = t->table[i][j].status;
 }
 
+void writeInvertedTableConstraint(table_t* t) 
+{ 
+    // Writes new constraint into the cnf.in file to get a different solution
+    int clausesNumber = getClausesNumber(INPUT_FILE);
+    writeNewHeader(HEADER_FILE, t->lines * t->columns, clausesNumber + 1);
+
+    copyToTemp(INPUT_FILE, TEMP_FILE);
+
+    joinFiles(HEADER_FILE, TEMP_FILE, INPUT_FILE);
+
+    addTableConstraint(INPUT_FILE, t);
+}
+
+void processSolution(table_t* t, table_t* minT, int* minAliveNum) 
+{ 
+    fillPastTable(t); 
+    int aliveNum = aliveCells(t); 
+    
+    if (aliveNum <= *minAliveNum) 
+    { 
+        *minAliveNum = aliveNum; 
+        switchMinTable(t, minT); 
+    } 
+}
+
 void getDifferentSolution(table_t* t, table_t* minT, int* t0AliveNum, int* minAliveNum)
 {
-    int clausesNumber;
     int aliveNum;
     
-    // Writes new constraint into the cnf.in file to get a different solution
-    clausesNumber = getClausesNumber("cnf.in");
-    writeNewHeader("cnf.header", t->lines * t->columns, clausesNumber + 1);
-    copyToTemp("cnf.in", "cnf.temp");
-    joinFiles("cnf.header", "cnf.temp", "cnf.in");
-    addTableConstraint("cnf.in", t);
+    // Adds constraint
+    writeInvertedTableConstraint(t);
 
-    // Run minisat again
-    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
-    //system("minisat cnf.in cnf.out");
+    // Run Solver again
+    runSolver();
 
-    fillPastTable(t);
-    aliveNum = aliveCells(t);
+    // Fills and checks if it has less alive cells
+    processSolution(t, minT, minAliveNum);
+}
 
-    if (aliveNum <= *minAliveNum)
-    {
-        *minAliveNum = aliveNum;
-        switchMinTable(t, minT);
-    }
+void cleanup(char* inputFile, char* tempFile, char* headerFile) 
+{
+    fclose(fopen(inputFile, "w"));
+    fclose(fopen(tempFile, "w"));
+    fclose(fopen(headerFile, "w"));
 }
 
 int main()
@@ -124,19 +164,17 @@ int main()
     buildPastTable(&t0, &t1);
 
     // Call the SAT Solver
-    system("./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 cnf.in cnf.out > /dev/null 2>&1");
-    //system("minisat cnf.in cnf.out");
+    runSolver();
 
-    // Get solution from cnf.out file and fill the table
+    // Get first solution from cnf.out file and fill the table
     fillPastTable(&t0);
     t0AliveNum = aliveCells(&t0);
     minAliveNum = t0AliveNum;
-    logTable(&t0, "pastTable.txt");
+    logTable(&t0, LOG_FILE);
 
     switchMinTable(&t0, &minTable);
 
     // Get new solution adding all cells but inverted as a clause to the cnf
-    // Until MAX TRIES or Timeout max
     for (int i = 0; i < MAX_TRIES && !timeout; i++)
         getDifferentSolution(&t0, &minTable, &t0AliveNum, &minAliveNum);
 
@@ -146,12 +184,9 @@ int main()
 
     // Log to compare with the input == Should be exactly equal
     moveToNextState(&minTable);
-    logTable(&minTable, "pastTable.txt");
+    logTable(&minTable, LOG_FILE);
     
-    // Cleanup
-    fclose(fopen("cnf.in", "w"));
-    fclose(fopen("cnf.temp", "w"));
-    fclose(fopen("cnf.header", "w"));
+    cleanup(INPUT_FILE, TEMP_FILE, HEADER_FILE);
 
     destroyTable(&t1);
     destroyTable(&t0);
