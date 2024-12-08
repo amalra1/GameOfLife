@@ -1,0 +1,83 @@
+ REVERSE GAME OF LIFE
+
+[PT-BR]
+
+---------- INTRODUÇÃO --------------------
+
+  Feito por:
+    Pedro Amaral Chapelin - GRR20206145
+    Thales Gabriel Carvalho de Lima - GRR20211772
+
+  Esse trabalho consiste providenciar uma possível configuração de tabuleiro NxM que pode ter gerado o tabuleiro T1 (obtido na entrada do programa) ao seguir com as regras do Game of Life. Para implementar, escolhemos utilizar um resolvedor SAT, e para isso foi necessário modelar o problema de voltar no tempo do Game of Life como um problema SAT. Para isso, seguimos o modelo proposto por *Stuart Bain* descrito no documento em anexo no Moodle da discplina.
+
+---------- DETALHES DA IMPLEMENTAÇÃO -----
+
+  O resolvedor SAT que escolhemos inicialmente para resolver o problema foi o Minisat, entretanto, quando tivemos certeza que já conseguimos gerar um tabuleiro qualquer que pode ter gerado t1, ao pensar em métodos para minimizar a quantidade de células vivas, migramos para o Mergesat, que por sinal utiliza a mesma entrada que o Mini. 
+  
+  Para que o resolvedor SAT funcione, ele necessita de um arquivo de entrada no modelo:
+
+  p cnf [Número de variáveis] [Número de cláusulas]
+  [Cláusulas, terminadas com 0]
+
+  Número de variáveis = Quantidade de células do tabuleiro, definimos uma estrutura para ele (Ver reverseLife.h) na qual é definido que cada célula possui um 'status' e um 'index':
+
+    status = ALIVE (1) ou DEAD (0)
+    index = Posição no tabuleiro, a primeira célula possui o index == 1, e a última, NxM.
+
+  Número de cláusulas = Esse número precisa corresponder exatamente a quantas linhas são escritas abaixo da primeira, dizendo  respeito a quantidade de cláusulas que o resolvedor precisa analisar.
+
+  Cláusulas = Cada cláusula é uma versão negada do que não queremos que aconteça. Ou seja, obedecendo as leis de transição de estados do Game of Life, escrevemos para todas as células as cláusulas contendo combinações de vizinhos que não pode ocorrer, pois dessa maneira o resolvedor SAT vai entender a restrição adicionada e escolher entre as combinações que não foram escritas.
+
+    Por exemplo, temos uma célula morta em T1, o índice dela é 1. (Primeira célula do tabuleiro) Para ela, geraremos as cláusulas que são combinações para ela continuar viva em T1 ou nascer em T1, que são as duas únicas opções que não podem acontecer, pois ela está morta em T1. Seguindo as regras do jogo, essas cláusulas conterão versões negadas de combinações de vizinhos nas quais possuam 2 ou 3 vivos (Para continuar viva, também dizendo na cláusula que ela estava viva em T1) ou exatamente 3 vizinhos vivos estando morta em T1 (Para nascer).
+
+    Tendo escrito essas cláusulas, impedimos que em T0 seja gerado uma combinação inválida para as regras do jogo.
+
+  A principal função que realiza esse processo para todas as células é a 'buildPastTable' (definida em reverseLife.h). Ela é responsável por gerar todas as cláusulas para o arquivo de entrada do resolvedor cnf.in. Feito isso, chamamos o resolvedor em si, que devolve a configuração do tabuleiro em um arquivo de nome cnf.out. Pegamos essa solução do arquivo e preenchemos os valores de T0 com a função 'fillPastTable'. Para finalizar, printamos o tabuleiro na tela no modelo esperado.
+
+---------- MELHORIAS ---------------------
+
+  Como dito anteriormente, para buscar minimizar a quantidade de células vivas do tabuleiro gerado, migramos para o Mergesat e usamos duas principais táticas para a minimização:
+
+    1 - Re-execuções: Após geração do primeiro tabuleiro correto, para gerar outra solução apenas precisamos adicionar uma cláusula a mais no arquivo de entrada do resolvedor com os índices negados de T0, assim dizemos a ele que não queremos aquela solução em específico e o rodamos de novo, anotando o tabuleiro com menor células vivas que foi gerado. Para fazer isso, criamos um timeout e um limite máximo de re-execuções para não rompermos o limite de tempo estabelecido no enunciado.
+
+    2 - Flags para o Mergesat: Após testes exaustivos conseguimos identificar algumas flags para o Mergesat que induzem para uma quantidade menor de células vivas em seus resultados, as flags são: -rtype=3 -rnd-init=3 -grow=50, da documentação:
+
+    -rtype: How to select the restart level (0=0, 1=matching trail, 2=reused trail, 3=always partial, 4=random); (default: 2)
+    -rnd-init: Initial activity is 0:0, 1:random, 2:1000/v, 3:v; (default: 0)
+    -grow:Allow a variable elimination step to grow by a number of clauses. (default: 0)
+
+    Com elas, principalmente para tabuleiros maiores e com altas quantidades de células vivas, conseguimos reduzir consideravelmente a quantidade de vivas geradas em T0.
+
+---------- EXECUÇÃO ----------------------
+
+  - Extrair o arquivo:
+    tar -xzvf ReverseLife.tar.gz
+
+  - Dentro da pasta 'ReverseLife', executar:
+    make
+
+  - Para executar:
+    ./main < entrada.txt
+
+    'entrada.txt' é um arquivo contendo um tabuleiro t1, seguindo o exemplo abaixo para um tabuleiro 4x6:
+    4 6
+    0 0 0 0 0 0
+    0 0 1 1 0 0
+    0 0 0 1 1 0
+    0 0 0 0 0 0
+
+    A primeira linha precisa conter o número de linhas e o número de colunas do tabuleiro;
+    O restante representa a configuração do tabuleiro: 0 - Célula morta, 1 - Célula viva
+
+---------- OUTPUT ------------------------
+
+  O programa possui um limite de tempo (timeout) setado para 4 minutos e 30 segundos, se chegar nessa marca de
+  tempo ele retornará imediatamente a melhor solução encontrada até o momento, para o exemplo acima a saída no
+  terminal será:
+  4 6
+  0 0 1 0 0 0
+  0 0 0 1 0 0
+  0 0 0 1 0 0
+  0 0 0 0 1 0
+
+  Além disso, o programa gerará o arquivo 't1.txt' que é o T0 depois de aplicado as regras do Game of Life, ao compará-lo com o arquivo 'entrada.txt', devem ser iguais.
