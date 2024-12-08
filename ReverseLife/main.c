@@ -14,7 +14,7 @@ volatile int timeout = 0; // Flag to indicate timeout
 void handle_timeout(int sig) 
 {
     timeout = 1;
-    printf("\nTime exceeded 4 minutes and 30 seconds.\n");
+    //printf("\nTime exceeded 4 minutes and 30 seconds.\n");
 }
 
 void runSolver() 
@@ -22,7 +22,7 @@ void runSolver()
     char call[256];
 
     // MERGESAT
-    snprintf(call, sizeof(call), "./mergesat -mem-lim=500 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 %s %s > /dev/null 2>&1", INPUT_FILE, OUTPUT_FILE);
+    snprintf(call, sizeof(call), "./mergesat -mem-lim=8000 -cpu-lim=300 -rtype=3 -rnd-init=3 -grow=50 %s %s > /dev/null 2>&1", INPUT_FILE, OUTPUT_FILE);
 
     // MINISAT
     //snprintf(call, sizeof(call), "minisat %s %s", INPUT_FILE, OUTPUT_FILE);
@@ -153,6 +153,9 @@ int main()
     setInitialState(&t1, presentState);
     t1AliveNum = aliveCells(&t1);
 
+    //printf("Esse algoritmo possui um limite de tempo definido em: %d segundos.\n", TIME_LIMIT);
+    //printf("Se o limite de tempo for atingido, o processo informará e retornará imediatamente a melhor solução obtida no momento.\n");
+
     // Generate cnf file to generate the t0 table
     buildPastTable(&t0, &t1);
 
@@ -171,8 +174,8 @@ int main()
     for (int i = 0; i < MAX_TRIES && !timeout; i++)
         getDifferentSolution(&t0, &minTable, &t0AliveNum, &minAliveNum);
 
-    printf("Minimum alive cells found: %d\n", minAliveNum);
-    printf("Minimum table:\n");
+    //printf("Minimum alive cells found: %d\n", minAliveNum);
+    //printf("Minimum table:\n");
     printTable(&minTable);
 
     // Log to compare with the input == Should be exactly equal
