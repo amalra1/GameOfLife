@@ -48,12 +48,15 @@
 
     Com elas, principalmente para tabuleiros maiores e com altas quantidades de células vivas, conseguimos reduzir consideravelmente a quantidade de vivas geradas em T0.
 
----------- EXECUÇÃO ----------------------
+---------- PASSOS PARA EXECUÇÃO ----------------------
 
   - Extrair o arquivo:
-    tar -xzvf ReverseLife.tar.gz
+    tar -xzvf ReverseLife.tgz
 
-  - Dentro da pasta 'ReverseLife', executar:
+  - Em 'ReverseLife/mergesat-files' buildar o mergesat com:
+    make r
+
+  - Agora em 'ReverseLife', compilar com:
     make
 
   - Para executar:
